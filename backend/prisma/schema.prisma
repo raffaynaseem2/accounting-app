@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  CLERK
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum SubledgerType {
+  NONE
+  CUSTOMER
+  SUPPLIER
+}
+
+enum SystemAccountKey {
+  AR
+  AP
+  SALES_REVENUE
+  GENERAL_EXPENSE
+  OPENING_BALANCE_EQUITY
+}
+
+enum PaymentTerms {
+  DUE_ON_RECEIPT
+  NET_15
+  NET_30
+  NET_60
+}
+
+enum JournalSide {
+  DEBIT
+  CREDIT
+}
+
+enum ItemType {
+  GOOD
+  SERVICE
+}
+
+enum InventoryMovementReason {
+  OPENING_BALANCE
+  PURCHASE
+  SALE
+  MANUAL_ADJUSTMENT
+}
+
+enum PaymentKind {
+  CUSTOMER_RECEIPT
+  SUPPLIER_PAYMENT
+}
+
+model Business {
+  id                 String              @id @default(uuid()) @db.Uuid
+  name               String
+  email              String?
+  createdAt          DateTime            @default(now())
+  users              AppUser[]
+  accounts           Account[]
+  expenses           Expense[]
+  journalEntries     JournalEntry[]
+  journalLines       JournalEntryLine[]
+  items              Item[]
+  inventoryMovements InventoryMovement[]
+  salesInvoices      SalesInvoice[]
+  purchaseBills      PurchaseBill[]
+  payments           Payment[]
+  customers          Customer[]
+  suppliers          Supplier[]
+}
+
+model Account {
+  id              String            @id @default(uuid()) @db.Uuid
+  businessId      String            @db.Uuid
+  code            String?
+  name            String
+  type            AccountType
+  parentAccountId String?           @db.Uuid
+  subledgerType   SubledgerType     @default(NONE)
+  systemKey       SystemAccountKey?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+
+  business         Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  parentAccount    Account?           @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: Restrict)
+  childAccounts    Account[]          @relation("AccountHierarchy")
+  journalLines     JournalEntryLine[]
+  customerReceivables Customer[]      @relation("CustomerReceivables")
+  supplierPayables    Supplier[]      @relation("SupplierPayables")
+  receivedPayments    Payment[]       @relation("PaymentAccount")
+
+  @@unique([businessId, code])
+  @@unique([businessId, systemKey])
+  @@index([businessId])
+  @@index([parentAccountId])
+}
+
+model Customer {
+  id                  String          @id @default(uuid()) @db.Uuid
+  businessId          String          @db.Uuid
+  name                String
+  contactEmail        String?
+  contactPhone        String?
+  billingAddress      String?
+  paymentTerms        PaymentTerms?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  receivableAccountId String?         @db.Uuid
+
+  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  receivableAccount Account?          @relation("CustomerReceivables", fields: [receivableAccountId], references: [id], onDelete: Restrict)
+  invoices          SalesInvoice[]
+  journalLines      JournalEntryLine[]
+  payments          Payment[]
+
+  @@index([businessId])
+  @@index([receivableAccountId])
+}
+
+model Supplier {
+  id               String          @id @default(uuid()) @db.Uuid
+  businessId       String          @db.Uuid
+  name             String
+  contactEmail     String?
+  contactPhone     String?
+  billingAddress   String?
+  paymentTerms     PaymentTerms?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  payableAccountId String?         @db.Uuid
+
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  payableAccount Account?          @relation("SupplierPayables", fields: [payableAccountId], references: [id], onDelete: Restrict)
+  bills          PurchaseBill[]
+  journalLines   JournalEntryLine[]
+  payments       Payment[]
+
+  @@index([businessId])
+  @@index([payableAccountId])
+}
+
+model Payment {
+  id             String      @id @default(uuid()) @db.Uuid
+  businessId     String      @db.Uuid
+  kind           PaymentKind
+  customerId     String?     @db.Uuid
+  supplierId     String?     @db.Uuid
+  accountId      String      @db.Uuid
+  amount         Decimal     @db.Decimal(19, 4)
+  paymentDate    DateTime    @default(now())
+  reference      String?
+  notes          String?
+  journalEntryId String      @unique @db.Uuid
+  createdAt      DateTime    @default(now())
+
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier     Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  account      Account      @relation("PaymentAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, paymentDate])
+  @@index([customerId])
+  @@index([supplierId])
+}
+
+model AppUser {
+  id         String   @id @default(uuid()) @db.Uuid
+  authUserId String   @unique
+  businessId String   @db.Uuid
+  role       UserRole @default(CLERK)
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("app_users")
+}
+
+model Expense {
+  id         Int      @id @default(autoincrement())
+  name       String
+  amount     Float
+  businessId String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model Item {
+  id             String   @id @default(uuid()) @db.Uuid
+  businessId     String   @db.Uuid
+  name           String
+  type           ItemType
+  productCode    String
+  description    String?
+  unitCost       Decimal? @db.Decimal(19, 4)
+  unitPrice      Decimal? @db.Decimal(19, 4)
+  quantityOnHand Decimal? @db.Decimal(19, 4)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  movements         InventoryMovement[]
+  salesInvoiceLines SalesInvoiceLine[]  @relation("SalesInvoiceLines")
+  purchaseBillLines PurchaseBillLine[]  @relation("PurchaseBillLines")
+
+  @@unique([businessId, productCode])
+  @@index([businessId, type])
+}
+
+model InventoryMovement {
+  id          String                  @id @default(uuid()) @db.Uuid
+  businessId  String                  @db.Uuid
+  itemId      String                  @db.Uuid
+  quantity    Decimal                 @db.Decimal(19, 4)
+  reason      InventoryMovementReason
+  referenceId String?
+  movementDate DateTime @default(now())
+  createdAt   DateTime                @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([itemId, createdAt])
+}
+
+model SalesInvoice {
+  id            String   @id @default(uuid()) @db.Uuid
+  businessId    String   @db.Uuid
+  customerId    String   @db.Uuid
+  invoiceNumber String
+  issueDate     DateTime @default(now())
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines    SalesInvoiceLine[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, issueDate])
+  @@index([customerId])
+}
+
+model SalesInvoiceLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  invoiceId   String  @db.Uuid
+  itemId      String  @db.Uuid
+  itemName    String
+  productCode String
+  quantity    Decimal @db.Decimal(19, 4)
+  unitPrice   Decimal @db.Decimal(19, 4)
+  lineTotal   Decimal @db.Decimal(19, 4)
+
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item    Item         @relation("SalesInvoiceLines", fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([itemId])
+}
+
+model PurchaseBill {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  supplierId String   @db.Uuid
+  billNumber String
+  billDate   DateTime @default(now())
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines    PurchaseBillLine[]
+
+  @@unique([businessId, billNumber])
+  @@index([businessId, billDate])
+  @@index([supplierId])
+}
+
+model PurchaseBillLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  billId      String  @db.Uuid
+  itemId      String  @db.Uuid
+  itemName    String
+  productCode String
+  quantity    Decimal @db.Decimal(19, 4)
+  unitCost    Decimal @db.Decimal(19, 4)
+  lineTotal   Decimal @db.Decimal(19, 4)
+
+  bill PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  item Item         @relation("PurchaseBillLines", fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([billId])
+  @@index([itemId])
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  businessId  String   @db.Uuid
+  entryDate   DateTime @default(now())
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sourceType  String?
+  sourceId    String?
+
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lines    JournalEntryLine[]
+  payment  Payment?
+
+  @@index([businessId, entryDate])
+  @@unique([businessId, sourceType, sourceId])
+}
+
+model JournalEntryLine {
+  id             String      @id @default(uuid()) @db.Uuid
+  businessId     String      @db.Uuid
+  journalEntryId String      @db.Uuid
+  accountId      String      @db.Uuid
+  customerId     String?     @db.Uuid
+  supplierId     String?     @db.Uuid
+  side           JournalSide
+  amount         Decimal     @db.Decimal(19, 4)
+  description    String?
+
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier     Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
+  @@index([journalEntryId])
+  @@index([accountId])
+}

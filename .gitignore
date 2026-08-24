@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Build output and caches
+frontend/.next/
+frontend/out/
+frontend/build/
+backend/dist/
+**/coverage/
+**/*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Local tooling and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.codex/
+
+# Preserve any nested/local Git metadata outside the root repository
+frontend/.git-local-history/
+backend/.git-local-history/
+backend/dev.db
