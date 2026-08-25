@@ -1,5 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+function apiUrl(path: string) {
+  const baseUrl = API_URL.replace(/\/+$/, "");
+  const requestPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl}${requestPath}`;
+}
+
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>;
 
 export class ApiError extends Error {
@@ -61,7 +67,7 @@ export async function apiRequest(path: string, getToken: GetToken, options: Requ
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   try {
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    const response = await fetch(apiUrl(path), { ...options, headers });
     return await readResponse(response);
   } catch (error) {
     if (error instanceof ApiError) throw error;
