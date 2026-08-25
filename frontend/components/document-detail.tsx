@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import MoneyAmount, { NumAmount } from "./money-amount";
 import EmptyState from "./empty-state";
+import { apiRequest } from "../lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -18,11 +19,11 @@ export default function DocumentDetail({ kind, id }: { kind: "invoice" | "bill";
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void (async () => {
-      const token = await getToken();
-      const response = await fetch(`${API_URL}${base}/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await response.json();
-      if (!response.ok) setError(data?.message ?? "Unable to load document");
-      else setDocument(data);
+      try {
+        setDocument(await apiRequest(`${base}/${id}`, getToken));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Unable to load document");
+      }
     })();
   }, [isLoaded, isSignedIn, getToken, base, id]);
 

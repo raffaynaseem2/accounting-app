@@ -13,7 +13,7 @@ const groups = [
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, signOut } = useAuth();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -21,6 +21,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setSidebarCollapsed(window.localStorage.getItem("ledgerly.sidebarCollapsed") === "true");
   }, []);
+
+  useEffect(() => {
+    const handleAuthFailure = () => { void signOut({ redirectUrl: "/sign-in" }); };
+    window.addEventListener("ledgerly:auth-failure", handleAuthFailure);
+    return () => window.removeEventListener("ledgerly:auth-failure", handleAuthFailure);
+  }, [signOut]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed((current) => {

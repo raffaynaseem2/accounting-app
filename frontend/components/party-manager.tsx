@@ -12,6 +12,7 @@ import StatusBadge from "./status-badge";
 import MoneyAmount from "./money-amount";
 import EmptyState from "./empty-state";
 import { usePagination } from "../lib/use-pagination";
+import { apiRequest } from "../lib/api-client";
 
 type Kind = "customers" | "suppliers";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -31,13 +32,7 @@ export default function PartyManager({ kind }: { kind: Kind }) {
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  };
+  const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
   const load = async () => {
     try {

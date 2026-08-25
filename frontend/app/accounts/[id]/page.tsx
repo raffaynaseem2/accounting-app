@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
+import { apiRequest } from "../../../lib/api-client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MoneyAmount from "../../../components/money-amount";
 import AccountBalanceAmount from "../../../components/account-balance-amount";
@@ -35,17 +36,7 @@ export default function AccountLedgerPage({ params }: { params: Promise<{ id: st
     void params.then((p) => setAccountId(p.id));
   }, [params]);
 
-  const request = useCallback(async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    if (!token) throw new Error("Please sign in first");
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  }, [getToken]);
+  const request = useCallback((path: string, options: RequestInit = {}) => apiRequest(path, getToken, options), [getToken]);
 
   const fetchLedger = useCallback(async (id: string, systemKey: string | null | undefined, partyId: string) => {
     const query = new URLSearchParams();

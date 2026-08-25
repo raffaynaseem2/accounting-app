@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import SearchableSelect from "./searchable-select";
 import SideDrawer from "./side-drawer";
 import { isLiquidAssetAccount } from "../lib/liquid-asset-accounts";
+import { apiRequest } from "../lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -17,7 +18,7 @@ type Props = {
 };
 
 export default function PaymentFormDrawer({ kind, partyId: initialPartyId = "", onClose, onSaved }: Props) {
-  const { getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const isCustomer = kind === "customer";
   const [parties, setParties] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -33,32 +34,18 @@ export default function PaymentFormDrawer({ kind, partyId: initialPartyId = "", 
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     void (async () => {
-      const token = await getToken({ skipCache: true });
-      if (!token) return;
-      const headers = { Authorization: `Bearer ${token}` };
-      const [partiesRes, accountsRes] = await Promise.all([
-        fetch(`${API_URL}/${isCustomer ? "customers" : "suppliers"}`, { headers }),
-        fetch(`${API_URL}/accounts`, { headers }),
+      const [partyList, accountList] = await Promise.all([
+        apiRequest(`/${isCustomer ? "customers" : "suppliers"}`, getToken),
+        apiRequest("/accounts", getToken),
       ]);
-      const partyList = await partiesRes.json();
-      const accountList = await accountsRes.json();
       setParties(partyList.filter((x: any) => x.isActive));
       setAccounts(accountList.filter((x: any) => x.isActive && isLiquidAssetAccount(x)));
     })();
-  }, [getToken, isCustomer]);
+  }, [isLoaded, isSignedIn, getToken, isCustomer]);
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    if (!token) throw new Error("Please sign in first");
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  };
+  const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

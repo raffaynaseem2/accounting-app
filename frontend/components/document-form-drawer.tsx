@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import SearchableSelect from "./searchable-select";
 import MoneyAmount from "./money-amount";
 import SideDrawer from "./side-drawer";
+import { apiRequest } from "../lib/api-client";
 
 type Mode = "sales" | "purchases";
 type Line = { itemId: string; quantity: string; price: string };
@@ -20,7 +21,7 @@ type Props = {
 };
 
 export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved }: Props) {
-  const { getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const isSales = mode === "sales";
   const base = isSales ? "/sales-invoices" : "/purchase-bills";
   const partyLabel = isSales ? "Customer" : "Supplier";
@@ -36,19 +37,10 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    if (!token) throw new Error("Please sign in first");
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  };
+  const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     void (async () => {
       try {
         const [p, i, doc] = await Promise.all([
@@ -75,7 +67,7 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
         setLoading(false);
       }
     })();
-  }, [documentId, isSales, base]);
+  }, [isLoaded, isSignedIn, documentId, isSales, base]);
 
   const chooseItem = (index: number, itemId: string) => {
     const item = items.find((x) => x.id === itemId);

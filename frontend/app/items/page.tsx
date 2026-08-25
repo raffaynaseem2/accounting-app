@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
+import { apiRequest } from "../../lib/api-client";
 import { useEffect, useMemo, useState } from "react";
 import OverflowMenu from "../../components/overflow-menu";
 import ConfirmDialog from "../../components/confirm-dialog";
@@ -30,13 +31,7 @@ export default function ItemsPage() {
   const [sortKey, setSortKey] = useState<"name" | "code" | "type" | "quantity" | "price">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  };
+  const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
   const load = async () => {
     try {

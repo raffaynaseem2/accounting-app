@@ -8,6 +8,7 @@ import EntityHero from "./entity-hero";
 import DocumentFormDrawer from "./document-form-drawer";
 import PaymentFormDrawer from "./payment-form-drawer";
 import MoneyAmount from "./money-amount";
+import { apiRequest } from "../lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -22,15 +23,12 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
   const isCustomer = kind === "customers";
 
   const load = useCallback(async () => {
-    const token = await getToken();
-    const headers = { Authorization: `Bearer ${token}` };
     const [p, b] = await Promise.all([
-      fetch(`${API_URL}/${kind}/${id}`, { headers }),
-      fetch(`${API_URL}/${kind}/${id}/balance`, { headers }),
+      apiRequest(`/${kind}/${id}`, getToken),
+      apiRequest(`/${kind}/${id}/balance`, getToken),
     ]);
-    if (!p.ok || !b.ok) throw new Error("Unable to load record");
-    setParty(await p.json());
-    setBalance(await b.json());
+    setParty(p);
+    setBalance(b);
   }, [getToken, id, kind]);
 
   useEffect(() => {

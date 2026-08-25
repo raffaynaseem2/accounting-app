@@ -12,6 +12,7 @@ import MoneyAmount from "./money-amount";
 import EmptyState from "./empty-state";
 import ConfirmDialog from "./confirm-dialog";
 import { usePagination } from "../lib/use-pagination";
+import { apiRequest } from "../lib/api-client";
 
 type Mode = "sales" | "purchases";
 type Line = { itemId: string; quantity: string; price: string };
@@ -46,14 +47,7 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
   const [deleting, setDeleting] = useState(false);
   const editHandled = useRef(false);
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = await getToken({ skipCache: true });
-    if (!token) throw new Error("Please sign in first");
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message ?? "Request failed");
-    return data;
-  };
+  const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
   const load = async () => {
     try {

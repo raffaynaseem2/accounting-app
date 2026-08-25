@@ -5,6 +5,7 @@ import { SignInButton, useAuth } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import MoneyAmount from "../components/money-amount";
 import { displayAccountBalance } from "../lib/account-balance";
+import { apiRequest } from "../lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -25,17 +26,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void (async () => {
-      const token = await getToken({ skipCache: true });
-      if (!token) return;
-      const h = { Authorization: `Bearer ${token}` };
       try {
         const [a, i, s, b] = await Promise.all([
-          fetch(`${API_URL}/accounts`, { headers: h }).then((r) => r.json()),
-          fetch(`${API_URL}/items`, { headers: h }).then((r) => r.json()),
-          fetch(`${API_URL}/sales-invoices`, { headers: h }).then((r) => r.json()),
-          fetch(`${API_URL}/purchase-bills`, { headers: h }).then((r) => r.json()),
+          apiRequest("/accounts", getToken),
+          apiRequest("/items", getToken),
+          apiRequest("/sales-invoices", getToken),
+          apiRequest("/purchase-bills", getToken),
         ]);
-        const balances = await Promise.all(a.map(async (x: any) => ({ x, v: Number(await fetch(`${API_URL}/accounts/${x.id}/balance`, { headers: h }).then((r) => r.json())) })));
+        const balances = await Promise.all(a.map(async (x: any) => ({ x, v: Number(await apiRequest(`/accounts/${x.id}/balance`, getToken)) })));
         const display = (entry: { x: any; v: number }) => displayAccountBalance(entry.v, entry.x.type);
         setMetrics({
           cash: balances.filter((z) => /cash|bank/i.test(z.x.name)).reduce((n, z) => n + display(z), 0),
@@ -52,7 +50,7 @@ export default function DashboardPage() {
   }, [isLoaded, isSignedIn, getToken]);
 
   if (!isLoaded) return <main className="panel">Loading...</main>;
-  if (!isSignedIn) return <main className="panel"><h1>Accounting app</h1><SignInButton mode="modal" /></main>;
+  if (!isSignedIn) return <main className="panel"><h1>Accounting app</h1><SignInButton mode="modal" fallbackRedirectUrl="/" forceRedirectUrl="/" /></main>;
 
   const cards = [
     ["Cash & bank", metrics.cash],
