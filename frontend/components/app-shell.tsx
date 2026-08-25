@@ -40,7 +40,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
     const isSignInRoute = pathname.startsWith("/sign-in");
-    if (!isSignedIn || isSignInRoute) {
+    const isSetupRoute = pathname === "/setup" || pathname.startsWith("/setup/");
+    if (!isSignedIn || isSignInRoute || isSetupRoute) {
       setBusinessChecked(true);
       return;
     }
@@ -113,7 +114,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [getToken, isLoaded, isSignedIn, pathname, router]);
 
   if (!isLoaded || !isSignedIn) return <>{children}</>;
-  if (!pathname.startsWith("/sign-in") && !businessChecked) {
+  const isSetupRoute = pathname === "/setup" || pathname.startsWith("/setup/");
+  if (!pathname.startsWith("/sign-in") && !isSetupRoute && !businessChecked) {
     return <main className="panel">Checking your workspace...</main>;
   }
   const visibleGroups = groups;
