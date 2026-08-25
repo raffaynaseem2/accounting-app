@@ -23,6 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [businessName, setBusinessName] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [businessChecked, setBusinessChecked] = useState(false);
 
   useEffect(() => {
     setSidebarCollapsed(window.localStorage.getItem("ledgerly.sidebarCollapsed") === "true");
@@ -37,26 +38,51 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded) return;
+    const isSignInRoute = pathname.startsWith("/sign-in");
+    if (!isSignedIn || isSignInRoute) {
+      setBusinessChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    setBusinessChecked(false);
     void (async () => {
       try {
         const token = await getToken({ skipCache: true });
-        if (!token) return;
+        if (!token) {
+          if (!cancelled) router.replace(`/sign-in?redirect_url=${encodeURIComponent(pathname)}`);
+          return;
+        }
         const response = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (!cancelled && response.status === 401) router.replace(`/sign-in?redirect_url=${encodeURIComponent(pathname)}`);
+          return;
+        }
         const data = await response.json();
         if (data.setupRequired) {
           setBusinessName("");
-          if (pathname !== "/setup") router.replace("/setup");
+          if (pathname !== "/setup") {
+            router.replace("/setup");
+          } else if (!cancelled) {
+            setBusinessChecked(true);
+          }
           return;
         }
         setRole(data.role);
         setBusinessName(data.business?.name ?? "");
+        if (pathname === "/setup") {
+          router.replace("/");
+        } else if (!cancelled) {
+          setBusinessChecked(true);
+        }
       } catch {
-        // Keep the page usable while the API is starting or unavailable.
-        setRole("CLERK");
+        // Keep protected pages gated until the API can confirm the workspace.
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, isSignedIn, getToken, pathname, router]);
 
   useEffect(() => {
@@ -87,6 +113,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [getToken, isLoaded, isSignedIn, pathname, router]);
 
   if (!isLoaded || !isSignedIn) return <>{children}</>;
+  if (!pathname.startsWith("/sign-in") && !businessChecked) {
+    return <main className="panel">Checking your workspace...</main>;
+  }
   const visibleGroups = groups;
 
   return <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
