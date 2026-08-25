@@ -13,10 +13,10 @@ describe("DocumentAccountingService", () => {
       },
     };
 
-    await expect(service.resolveBillAccounts(tx as any, "business-1")).rejects.toBeInstanceOf(
+    await expect(service.resolveBillAccounts(tx as any, "user-1")).rejects.toBeInstanceOf(
       BadRequestException,
     );
-    await expect(service.resolveBillAccounts(tx as any, "business-1")).rejects.toThrow(
+    await expect(service.resolveBillAccounts(tx as any, "user-1")).rejects.toThrow(
       "Configure active Accounts Payable and General Expense accounts before saving a bill",
     );
   });
@@ -49,7 +49,7 @@ describe("DocumentAccountingService", () => {
 
     await service.syncBill(
       tx as any,
-      "business-1",
+      "user-1",
       "bill-1",
       "supplier-1",
       [

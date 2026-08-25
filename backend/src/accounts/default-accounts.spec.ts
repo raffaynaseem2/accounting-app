@@ -24,7 +24,7 @@ describe("ensureDefaultAccounts", () => {
       },
     };
 
-    await ensureDefaultAccounts(tx as any, "business-1");
+    await ensureDefaultAccounts(tx as any, "user-1");
 
     expect(created).toEqual(["AP", "SALES_REVENUE", "GENERAL_EXPENSE", "OPENING_BALANCE_EQUITY"]);
   });

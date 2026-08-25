@@ -7,8 +7,8 @@ type AccountInput = { name?: string; code?: string | null; type?: "ASSET" | "LIA
 @Injectable()
 export class AccountsService {
   constructor(private readonly prisma: PrismaService) {}
-  list(businessId: string) { return this.prisma.account.findMany({ where: { businessId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }); }
-  async create(businessId: string, input: AccountInput) {
+  list(userId: string) { return this.prisma.account.findMany({ where: { userId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }); }
+  async create(userId: string, input: AccountInput) {
     const name = input.name?.trim();
     if (!name) throw new BadRequestException("Account name is required");
     if (!input.type) throw new BadRequestException("Account type is required");
@@ -16,11 +16,11 @@ export class AccountsService {
       const expected = input.subledgerType === "CUSTOMER" ? "ASSET" : "LIABILITY";
       if (input.type !== expected) throw new BadRequestException(`${input.subledgerType} subledger accounts must be ${expected} accounts`);
     }
-    try { return await this.prisma.account.create({ data: { businessId, name, code: input.code?.trim() || null, type: input.type, subledgerType: input.subledgerType ?? "NONE" } }); }
+    try { return await this.prisma.account.create({ data: { userId, name, code: input.code?.trim() || null, type: input.type, subledgerType: input.subledgerType ?? "NONE" } }); }
     catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ConflictException("Account code already exists"); throw error; }
   }
-  async update(businessId: string, id: string, input: AccountInput & { isActive?: boolean }) {
-    const account = await this.prisma.account.findFirst({ where: { id, businessId } });
+  async update(userId: string, id: string, input: AccountInput & { isActive?: boolean }) {
+    const account = await this.prisma.account.findFirst({ where: { id, userId } });
     if (!account) throw new NotFoundException("Account not found");
     if (input.name !== undefined && !input.name.trim()) throw new BadRequestException("Account name is required");
     if (input.type && input.type !== account.type) throw new BadRequestException("An account type cannot be changed after creation");
@@ -28,32 +28,32 @@ export class AccountsService {
     if (account.systemKey && (input.type || input.subledgerType)) throw new BadRequestException("System accounts cannot change their accounting identity");
     return this.prisma.account.update({ where: { id }, data: { ...(input.name !== undefined ? { name: input.name.trim() } : {}), ...(input.code !== undefined ? { code: input.code?.trim() || null } : {}), ...(input.isActive !== undefined ? { isActive: input.isActive } : {}) } });
   }
-  async remove(businessId: string, id: string) {
-    const account = await this.prisma.account.findFirst({ where: { id, businessId } });
+  async remove(userId: string, id: string) {
+    const account = await this.prisma.account.findFirst({ where: { id, userId } });
     if (!account) throw new NotFoundException("Account not found");
     if (account.systemKey) throw new ConflictException("System accounts should be deactivated instead of deleted");
-    const lineCount = await this.prisma.journalEntryLine.count({ where: { accountId: id, businessId } });
+    const lineCount = await this.prisma.journalEntryLine.count({ where: { accountId: id, userId } });
     if (lineCount > 0) throw new ConflictException("Account has journal entries and cannot be deleted");
     return this.prisma.account.delete({ where: { id } });
   }
-  async getAccountBalance(accountId: string, businessId: string): Promise<string> {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, businessId }, select: { id: true, childAccounts: { select: { id: true } } } });
+  async getAccountBalance(accountId: string, userId: string): Promise<string> {
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId }, select: { id: true, childAccounts: { select: { id: true } } } });
     if (!account) throw new NotFoundException("Account not found");
-    const totals = await this.prisma.journalEntryLine.groupBy({ by: ["side"], where: { accountId, businessId }, _sum: { amount: true } });
+    const totals = await this.prisma.journalEntryLine.groupBy({ by: ["side"], where: { accountId, userId }, _sum: { amount: true } });
     let balance = new Prisma.Decimal(0);
     for (const total of totals) balance = total.side === "DEBIT" ? balance.plus(total._sum.amount ?? 0) : balance.minus(total._sum.amount ?? 0);
-    for (const child of account.childAccounts) balance = balance.plus(new Prisma.Decimal(await this.getAccountBalance(child.id, businessId)));
+    for (const child of account.childAccounts) balance = balance.plus(new Prisma.Decimal(await this.getAccountBalance(child.id, userId)));
     return balance.toFixed(2);
   }
   async getLedger(
     accountId: string,
-    businessId: string,
+    userId: string,
     filters?: { customerId?: string; supplierId?: string },
   ) {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, businessId } });
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
     if (!account) throw new NotFoundException("Account not found");
 
-    const lineWhere: Prisma.JournalEntryLineWhereInput = { accountId, businessId };
+    const lineWhere: Prisma.JournalEntryLineWhereInput = { accountId, userId };
     if (filters?.customerId) lineWhere.customerId = filters.customerId;
     if (filters?.supplierId) lineWhere.supplierId = filters.supplierId;
 
@@ -66,6 +66,6 @@ export class AccountsService {
       },
       orderBy: [{ journalEntry: { entryDate: "asc" } }, { id: "asc" }],
     });
-    return { account, balance: await this.getAccountBalance(accountId, businessId), journalLines };
+    return { account, balance: await this.getAccountBalance(accountId, userId), journalLines };
   }
 }

@@ -45,14 +45,14 @@ export class PurchaseBillsService {
     }
   }
 
-  private async nextNumber(tx: Prisma.TransactionClient, businessId: string) {
-    const count = await tx.purchaseBill.count({ where: { businessId } });
+  private async nextNumber(tx: Prisma.TransactionClient, userId: string) {
+    const count = await tx.purchaseBill.count({ where: { userId } });
     return `BILL-${String(count + 1).padStart(6, "0")}`;
   }
 
   private async normalizedLines(
     tx: Prisma.TransactionClient,
-    businessId: string,
+    userId: string,
     lines: LineInput[],
   ): Promise<NormalizedLine[]> {
     if (!lines?.length) throw new BadRequestException("At least one bill line is required");
@@ -63,10 +63,10 @@ export class PurchaseBillsService {
     }
 
     const items = await tx.item.findMany({
-      where: { businessId, id: { in: ids }, isActive: true },
+      where: { userId, id: { in: ids }, isActive: true },
     });
     if (items.length !== ids.length) {
-      throw new BadRequestException("Every bill item must be active and belong to this business");
+      throw new BadRequestException("Every bill item must be active and belong to this user");
     }
 
     return lines.map((line) => {
@@ -80,13 +80,13 @@ export class PurchaseBillsService {
 
   private async replaceMovements(
     tx: Prisma.TransactionClient,
-    businessId: string,
+    userId: string,
     billId: string,
     lines: NormalizedLine[],
   ) {
-    const old = await tx.inventoryMovement.findMany({ where: { businessId, referenceId: billId } });
+    const old = await tx.inventoryMovement.findMany({ where: { userId, referenceId: billId } });
     for (const movement of old) {
-      const item = await tx.item.findFirst({ where: { id: movement.itemId, businessId } });
+      const item = await tx.item.findFirst({ where: { id: movement.itemId, userId } });
       if (item?.type === "GOOD") {
         await tx.item.update({
           where: { id: item.id },
@@ -96,14 +96,14 @@ export class PurchaseBillsService {
         });
       }
     }
-    await tx.inventoryMovement.deleteMany({ where: { businessId, referenceId: billId } });
+    await tx.inventoryMovement.deleteMany({ where: { userId, referenceId: billId } });
 
     for (const line of lines) {
       if (line.item.type !== "GOOD") continue;
       const item = await tx.item.findUniqueOrThrow({ where: { id: line.item.id } });
       await tx.inventoryMovement.create({
         data: {
-          businessId,
+          userId,
           itemId: line.item.id,
           quantity: line.quantity,
           reason: "PURCHASE",
@@ -119,37 +119,37 @@ export class PurchaseBillsService {
     }
   }
 
-  list(businessId: string) {
+  list(userId: string) {
     return this.prisma.purchaseBill.findMany({
-      where: { businessId },
+      where: { userId },
       include: { supplier: true, lines: true },
       orderBy: { billDate: "desc" },
     });
   }
 
-  async get(businessId: string, id: string) {
+  async get(userId: string, id: string) {
     const result = await this.prisma.purchaseBill.findFirst({
-      where: { id, businessId },
+      where: { id, userId },
       include: { supplier: true, lines: true },
     });
     if (!result) throw new NotFoundException("Purchase bill not found");
     return result;
   }
 
-  async create(businessId: string, input: BillInput) {
+  async create(userId: string, input: BillInput) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         if (!input.supplierId) throw new BadRequestException("Supplier is required");
         const supplier = await tx.supplier.findFirst({
-          where: { id: input.supplierId, businessId, isActive: true },
+          where: { id: input.supplierId, userId, isActive: true },
         });
         if (!supplier) throw new BadRequestException("Active supplier not found");
 
-        const lines = await this.normalizedLines(tx, businessId, input.lines ?? []);
-        const billNumber = input.billNumber?.trim() || (await this.nextNumber(tx, businessId));
+        const lines = await this.normalizedLines(tx, userId, input.lines ?? []);
+        const billNumber = input.billNumber?.trim() || (await this.nextNumber(tx, userId));
         const bill = await tx.purchaseBill.create({
           data: {
-            businessId,
+            userId,
             supplierId: supplier.id,
             billNumber,
             billDate: input.billDate ? new Date(input.billDate) : new Date(),
@@ -167,8 +167,8 @@ export class PurchaseBillsService {
           },
           include: { supplier: true, lines: true },
         });
-        await this.replaceMovements(tx, businessId, bill.id, lines);
-        await this.accounting.syncBill(tx, businessId, bill.id, supplier.id, lines, billNumber);
+        await this.replaceMovements(tx, userId, bill.id, lines);
+        await this.accounting.syncBill(tx, userId, bill.id, supplier.id, lines, billNumber);
         return bill;
       });
     } catch (error) {
@@ -190,18 +190,18 @@ export class PurchaseBillsService {
     }
   }
 
-  async update(businessId: string, id: string, input: BillInput) {
+  async update(userId: string, id: string, input: BillInput) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.purchaseBill.findFirst({ where: { id, businessId } });
+      const existing = await tx.purchaseBill.findFirst({ where: { id, userId } });
       if (!existing) throw new NotFoundException("Purchase bill not found");
 
       const supplierId = input.supplierId ?? existing.supplierId;
       const supplier = await tx.supplier.findFirst({
-        where: { id: supplierId, businessId, isActive: true },
+        where: { id: supplierId, userId, isActive: true },
       });
       if (!supplier) throw new BadRequestException("Active supplier not found");
 
-      const lines = await this.normalizedLines(tx, businessId, input.lines ?? []);
+      const lines = await this.normalizedLines(tx, userId, input.lines ?? []);
       const billNumber = input.billNumber?.trim() ?? existing.billNumber;
 
       await tx.purchaseBillLine.deleteMany({ where: { billId: id } });
@@ -225,19 +225,19 @@ export class PurchaseBillsService {
         },
         include: { supplier: true, lines: true },
       });
-      await this.replaceMovements(tx, businessId, id, lines);
-      await this.accounting.syncBill(tx, businessId, id, supplier.id, lines, billNumber);
+      await this.replaceMovements(tx, userId, id, lines);
+      await this.accounting.syncBill(tx, userId, id, supplier.id, lines, billNumber);
       return bill;
     });
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(userId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      const bill = await tx.purchaseBill.findFirst({ where: { id, businessId } });
+      const bill = await tx.purchaseBill.findFirst({ where: { id, userId } });
       if (!bill) throw new NotFoundException("Purchase bill not found");
 
-      await this.replaceMovements(tx, businessId, id, []);
-      await deleteSourceJournal(tx, businessId, "PURCHASE_BILL", id);
+      await this.replaceMovements(tx, userId, id, []);
+      await deleteSourceJournal(tx, userId, "PURCHASE_BILL", id);
       await tx.purchaseBill.delete({ where: { id } });
     });
   }

@@ -15,10 +15,10 @@ export async function deletePaymentRecord(
 
 export async function deleteSourceJournal(
   tx: Prisma.TransactionClient,
-  businessId: string,
+  userId: string,
   sourceType: string,
   sourceId: string,
 ) {
-  const existing = await tx.journalEntry.findFirst({ where: { businessId, sourceType, sourceId } });
+  const existing = await tx.journalEntry.findFirst({ where: { userId, sourceType, sourceId } });
   if (existing) await deleteJournalEntry(tx, existing.id);
 }

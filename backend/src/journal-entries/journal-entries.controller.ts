@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
 import { JournalEntriesService } from "./journal-entries.service";
 
@@ -7,27 +7,26 @@ import { JournalEntriesService } from "./journal-entries.service";
 export class JournalEntriesController {
   constructor(private readonly service: JournalEntriesService) {}
 
-  private businessId(request: any) {
-    if (!request.appUser) throw new ForbiddenException("User is not linked to a business");
-    return request.appUser.businessId;
+  private userId(request: any) {
+    return request.authUserId;
   }
 
   @Get()
-  list(@Req() request: any) { return this.service.list(this.businessId(request)); }
+  list(@Req() request: any) { return this.service.list(this.userId(request)); }
 
   @Get(":id")
-  get(@Req() request: any, @Param("id") id: string) { return this.service.get(this.businessId(request), id); }
+  get(@Req() request: any, @Param("id") id: string) { return this.service.get(this.userId(request), id); }
 
   @Post()
-  create(@Req() request: any, @Body() body: any) { return this.service.create(this.businessId(request), body); }
+  create(@Req() request: any, @Body() body: any) { return this.service.create(this.userId(request), body); }
 
   @Patch(":id")
   update(@Req() request: any, @Param("id") id: string, @Body() body: any) {
-    return this.service.update(this.businessId(request), id, body);
+    return this.service.update(this.userId(request), id, body);
   }
 
   @Delete(":id")
   remove(@Req() request: any, @Param("id") id: string) {
-    return this.service.remove(this.businessId(request), id);
+    return this.service.remove(this.userId(request), id);
   }
 }

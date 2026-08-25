@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Req,
@@ -18,20 +17,12 @@ export class ExpensesController {
 
   @Get()
   getAll(@Req() request: any) {
-    if (!request.appUser) {
-      throw new ForbiddenException("User is not linked to a business");
-    }
-
-    return this.expensesService.getAll(request.appUser.businessId);
+    return this.expensesService.getAll(request.authUserId);
   }
 
   @Post()
   add(@Req() request: any, @Body() body: any) {
-    if (!request.appUser) {
-      throw new ForbiddenException("User is not linked to a business");
-    }
-
-    return this.expensesService.add(request.appUser.businessId, {
+    return this.expensesService.add(request.authUserId, {
       name: body.name,
       amount: Number(body.amount),
     });

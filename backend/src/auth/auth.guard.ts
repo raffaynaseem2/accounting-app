@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { verifyToken } from "@clerk/backend";
 import { PrismaService } from "../prisma/prisma.service";
+import { ensureDefaultAccounts } from "../accounts/default-accounts";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -30,13 +31,14 @@ export class AuthGuard implements CanActivate {
       const authUserId = claims.sub;
       if (!authUserId) throw new UnauthorizedException("Invalid bearer token");
       request.authUserId = authUserId;
-      request.appUser = await this.prisma.appUser.findUnique({
-        where: {
-          authUserId,
-        },
-        include: {
-          business: true,
-        },
+      request.appUser = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.appUser.upsert({
+          where: { authUserId },
+          create: { authUserId, role: "ADMIN" },
+          update: {},
+        });
+        await ensureDefaultAccounts(tx, authUserId);
+        return user;
       });
       return true;
     } catch {

@@ -23,17 +23,17 @@ export class PartiesService {
     return kind === "CUSTOMER" ? "receivableAccount" : "payableAccount";
   }
 
-  list(businessId: string, kind: PartyKind) {
+  list(userId: string, kind: PartyKind) {
     return this.delegate(kind).findMany({
-      where: { businessId },
+      where: { userId },
       include: { [this.relation(kind)]: true },
       orderBy: { name: "asc" },
     });
   }
 
-  async get(businessId: string, kind: PartyKind, id: string) {
+  async get(userId: string, kind: PartyKind, id: string) {
     const party = await this.delegate(kind).findFirst({
-      where: { id, businessId },
+      where: { id, userId },
       include: kind === "CUSTOMER"
         ? { invoices: { include: { lines: true }, orderBy: { issueDate: "desc" } }, journalLines: { include: { account: true, journalEntry: true }, orderBy: { id: "asc" } }, receivableAccount: true }
         : { bills: { include: { lines: true }, orderBy: { billDate: "desc" } }, journalLines: { include: { account: true, journalEntry: true }, orderBy: { id: "asc" } }, payableAccount: true },
@@ -42,17 +42,17 @@ export class PartiesService {
     return party;
   }
 
-  async create(businessId: string, kind: PartyKind, input: PartyInput) {
+  async create(userId: string, kind: PartyKind, input: PartyInput) {
     const name = input.name?.trim();
     if (!name) throw new BadRequestException(`${kind === "CUSTOMER" ? "Customer" : "Supplier"} name is required`);
     const control = await this.prisma.account.findFirst({
-      where: { businessId, subledgerType: kind === "CUSTOMER" ? "CUSTOMER" : "SUPPLIER", isActive: true },
+      where: { userId, subledgerType: kind === "CUSTOMER" ? "CUSTOMER" : "SUPPLIER", isActive: true },
       orderBy: { systemKey: "asc" },
     });
     if (!control) throw new BadRequestException(`Configure an active ${kind === "CUSTOMER" ? "Accounts Receivable" : "Accounts Payable"} account first`);
     return this.delegate(kind).create({
       data: {
-        businessId,
+        userId,
         name,
         contactEmail: input.contactEmail || null,
         contactPhone: input.contactPhone || null,
@@ -64,8 +64,8 @@ export class PartiesService {
     });
   }
 
-  async update(businessId: string, kind: PartyKind, id: string, input: PartyInput & { isActive?: boolean }) {
-    await this.get(businessId, kind, id);
+  async update(userId: string, kind: PartyKind, id: string, input: PartyInput & { isActive?: boolean }) {
+    await this.get(userId, kind, id);
     if (input.name !== undefined && !input.name.trim()) throw new BadRequestException("Name is required");
     return this.delegate(kind).update({
       where: { id },
@@ -81,13 +81,13 @@ export class PartiesService {
     });
   }
 
-  async balance(businessId: string, kind: PartyKind, id: string) {
-    const party = await this.get(businessId, kind, id);
+  async balance(userId: string, kind: PartyKind, id: string) {
+    const party = await this.get(userId, kind, id);
     const accountId = kind === "CUSTOMER" ? party.receivableAccountId : party.payableAccountId;
     if (!accountId) return "0.00";
     const lines = await this.prisma.journalEntryLine.groupBy({
       by: ["side"],
-      where: { businessId, accountId, ...(kind === "CUSTOMER" ? { customerId: id } : { supplierId: id }) },
+      where: { userId, accountId, ...(kind === "CUSTOMER" ? { customerId: id } : { supplierId: id }) },
       _sum: { amount: true },
     });
     let result = new Prisma.Decimal(0);

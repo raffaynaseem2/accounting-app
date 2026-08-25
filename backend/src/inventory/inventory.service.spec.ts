@@ -13,7 +13,7 @@ describe("InventoryService", () => {
     const prisma = { $transaction: jest.fn((callback) => callback(tx)) } as any;
     const service = new InventoryService(prisma);
 
-    await service.recordMovement("business-a", "item-a", { quantity: 5, reason: "PURCHASE" });
+    await service.recordMovement("user-a", "item-a", { quantity: 5, reason: "PURCHASE" });
     expect(tx.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ quantity: expect.anything(), reason: "PURCHASE" }) }));
     expect(tx.item.update).toHaveBeenCalled();
   });
@@ -27,7 +27,7 @@ describe("InventoryService", () => {
     const prisma = { $transaction: jest.fn((callback) => callback(tx)) } as any;
     const service = new InventoryService(prisma);
 
-    const result = await service.recordMovement("business-a", "service-a", { quantity: 5, reason: "SALE" });
+    const result = await service.recordMovement("user-a", "service-a", { quantity: 5, reason: "SALE" });
     expect(result.movement).toBeNull();
     expect(tx.inventoryMovement.create).not.toHaveBeenCalled();
   });

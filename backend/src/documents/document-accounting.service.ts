@@ -15,11 +15,11 @@ export class DocumentAccountingService {
     return lines.reduce((sum, line) => sum.plus(new Prisma.Decimal(line.lineTotal)), new Prisma.Decimal(0));
   }
 
-  private async resolveInvoiceAccounts(tx: Prisma.TransactionClient, businessId: string) {
-    await ensureDefaultAccounts(tx, businessId);
+  private async resolveInvoiceAccounts(tx: Prisma.TransactionClient, userId: string) {
+    await ensureDefaultAccounts(tx, userId);
     const [ar, revenue] = await Promise.all([
-      tx.account.findFirst({ where: { businessId, systemKey: "AR", isActive: true } }),
-      tx.account.findFirst({ where: { businessId, systemKey: "SALES_REVENUE", isActive: true } }),
+      tx.account.findFirst({ where: { userId, systemKey: "AR", isActive: true } }),
+      tx.account.findFirst({ where: { userId, systemKey: "SALES_REVENUE", isActive: true } }),
     ]);
     if (!ar || !revenue) {
       throw new BadRequestException(
@@ -29,20 +29,20 @@ export class DocumentAccountingService {
     return { ar, revenue };
   }
 
-  async resolveBillAccounts(tx: Prisma.TransactionClient, businessId: string) {
-    await ensureDefaultAccounts(tx, businessId);
+  async resolveBillAccounts(tx: Prisma.TransactionClient, userId: string) {
+    await ensureDefaultAccounts(tx, userId);
 
     const ap =
-      (await tx.account.findFirst({ where: { businessId, systemKey: "AP", isActive: true } })) ??
+      (await tx.account.findFirst({ where: { userId, systemKey: "AP", isActive: true } })) ??
       (await tx.account.findFirst({
-        where: { businessId, type: "LIABILITY", subledgerType: "SUPPLIER", isActive: true },
+        where: { userId, type: "LIABILITY", subledgerType: "SUPPLIER", isActive: true },
         orderBy: { createdAt: "asc" },
       }));
 
     const generalExpense =
-      (await tx.account.findFirst({ where: { businessId, systemKey: "GENERAL_EXPENSE", isActive: true } })) ??
+      (await tx.account.findFirst({ where: { userId, systemKey: "GENERAL_EXPENSE", isActive: true } })) ??
       (await tx.account.findFirst({
-        where: { businessId, type: "EXPENSE", name: "General Expense", isActive: true },
+        where: { userId, type: "EXPENSE", name: "General Expense", isActive: true },
       }));
 
     const missing: string[] = [];
@@ -59,25 +59,25 @@ export class DocumentAccountingService {
 
   private async replace(
     tx: Prisma.TransactionClient,
-    businessId: string,
+    userId: string,
     sourceType: string,
     sourceId: string,
     description: string,
     lines: { accountId: string; customerId?: string; supplierId?: string; side: "DEBIT" | "CREDIT"; amount: Prisma.Decimal }[],
   ) {
-    const existing = await tx.journalEntry.findFirst({ where: { businessId, sourceType, sourceId } });
+    const existing = await tx.journalEntry.findFirst({ where: { userId, sourceType, sourceId } });
     if (existing) await tx.journalEntry.delete({ where: { id: existing.id } });
 
     try {
       await tx.journalEntry.create({
         data: {
-          businessId,
+          userId,
           sourceType,
           sourceId,
           description,
           lines: {
             create: lines.map((line) => ({
-              businessId,
+              userId,
               accountId: line.accountId,
               customerId: line.customerId ?? null,
               supplierId: line.supplierId ?? null,
@@ -98,17 +98,17 @@ export class DocumentAccountingService {
 
   async syncInvoice(
     tx: Prisma.TransactionClient,
-    businessId: string,
+    userId: string,
     invoiceId: string,
     customerId: string,
     lines: BillLine[],
     invoiceNumber: string,
   ) {
-    const { ar, revenue } = await this.resolveInvoiceAccounts(tx, businessId);
+    const { ar, revenue } = await this.resolveInvoiceAccounts(tx, userId);
     const total = this.lineTotal(lines);
     if (total.lte(0)) throw new BadRequestException("Invoice total must be greater than zero");
 
-    return this.replace(tx, businessId, "SALES_INVOICE", invoiceId, `Sales invoice ${invoiceNumber}`, [
+    return this.replace(tx, userId, "SALES_INVOICE", invoiceId, `Sales invoice ${invoiceNumber}`, [
       { accountId: ar.id, customerId, side: "DEBIT", amount: total },
       { accountId: revenue.id, side: "CREDIT", amount: total },
     ]);
@@ -116,17 +116,17 @@ export class DocumentAccountingService {
 
   async syncBill(
     tx: Prisma.TransactionClient,
-    businessId: string,
+    userId: string,
     billId: string,
     supplierId: string,
     lines: BillLine[],
     billNumber: string,
   ) {
-    const { ap, generalExpense } = await this.resolveBillAccounts(tx, businessId);
+    const { ap, generalExpense } = await this.resolveBillAccounts(tx, userId);
     const total = this.lineTotal(lines);
     if (total.lte(0)) throw new BadRequestException("Bill total must be greater than zero");
 
-    return this.replace(tx, businessId, "PURCHASE_BILL", billId, `Purchase bill ${billNumber}`, [
+    return this.replace(tx, userId, "PURCHASE_BILL", billId, `Purchase bill ${billNumber}`, [
       { accountId: generalExpense.id, side: "DEBIT", amount: total },
       { accountId: ap.id, supplierId, side: "CREDIT", amount: total },
     ]);

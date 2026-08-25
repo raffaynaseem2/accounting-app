@@ -19,15 +19,15 @@ type PaymentInput = {
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(businessId: string) {
+  list(userId: string) {
     return this.prisma.payment.findMany({
-      where: { businessId },
+      where: { userId },
       include: { customer: true, supplier: true, account: true, journalEntry: true },
       orderBy: { paymentDate: "desc" },
     });
   }
 
-  async create(businessId: string, input: PaymentInput) {
+  async create(userId: string, input: PaymentInput) {
     if (!input.kind || !["CUSTOMER_RECEIPT", "SUPPLIER_PAYMENT"].includes(input.kind)) {
       throw new BadRequestException("Payment type is required");
     }
@@ -47,18 +47,18 @@ export class PaymentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.account.findFirst({
-        where: { id: input.accountId, businessId, isActive: true },
+        where: { id: input.accountId, userId, isActive: true },
       });
       if (!account || !isLiquidAssetAccount(account)) {
         throw new BadRequestException("Select an active bank or cash asset account");
       }
       const party = isCustomer
-        ? await tx.customer.findFirst({ where: { id: input.customerId, businessId, isActive: true } })
-        : await tx.supplier.findFirst({ where: { id: input.supplierId, businessId, isActive: true } });
+        ? await tx.customer.findFirst({ where: { id: input.customerId, userId, isActive: true } })
+        : await tx.supplier.findFirst({ where: { id: input.supplierId, userId, isActive: true } });
       if (!party) throw new NotFoundException("Active payment party not found");
 
       const control = await tx.account.findFirst({
-        where: { businessId, systemKey: isCustomer ? "AR" : "AP", isActive: true },
+        where: { userId, systemKey: isCustomer ? "AR" : "AP", isActive: true },
       });
       if (!control) {
         throw new BadRequestException(
@@ -68,26 +68,26 @@ export class PaymentsService {
 
       const entry = await tx.journalEntry.create({
         data: {
-          businessId,
+          userId,
           description: isCustomer ? `Customer receipt - ${party.name}` : `Supplier payment - ${party.name}`,
           entryDate: input.paymentDate ? new Date(input.paymentDate) : new Date(),
           sourceType: "PAYMENT",
           lines: {
             create: isCustomer
               ? [
-                  { businessId, accountId: account.id, side: "DEBIT", amount },
-                  { businessId, accountId: control.id, customerId: party.id, side: "CREDIT", amount },
+                  { userId, accountId: account.id, side: "DEBIT", amount },
+                  { userId, accountId: control.id, customerId: party.id, side: "CREDIT", amount },
                 ]
               : [
-                  { businessId, accountId: control.id, supplierId: party.id, side: "DEBIT", amount },
-                  { businessId, accountId: account.id, side: "CREDIT", amount },
+                  { userId, accountId: control.id, supplierId: party.id, side: "DEBIT", amount },
+                  { userId, accountId: account.id, side: "CREDIT", amount },
                 ],
           },
         },
       });
       const payment = await tx.payment.create({
         data: {
-          businessId,
+          userId,
           kind,
           customerId: isCustomer ? party.id : null,
           supplierId: isCustomer ? null : party.id,
@@ -107,9 +107,9 @@ export class PaymentsService {
     });
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(userId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findFirst({ where: { id, businessId } });
+      const payment = await tx.payment.findFirst({ where: { id, userId } });
       if (!payment) throw new NotFoundException("Payment not found");
       await deletePaymentRecord(tx, payment);
     });

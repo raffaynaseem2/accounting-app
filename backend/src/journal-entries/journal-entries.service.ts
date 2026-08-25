@@ -46,24 +46,24 @@ export class JournalEntriesService {
     return null;
   }
 
-  list(businessId: string) {
+  list(userId: string) {
     return this.prisma.journalEntry.findMany({
-      where: { businessId },
+      where: { userId },
       include: { lines: { include: { account: true, customer: true, supplier: true }, orderBy: { id: "asc" } } },
       orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
     });
   }
 
-  async get(businessId: string, id: string) {
+  async get(userId: string, id: string) {
     const entry = await this.prisma.journalEntry.findFirst({
-      where: { id, businessId },
+      where: { id, userId },
       include: { lines: { include: { account: true, customer: true, supplier: true } } },
     });
     if (!entry) throw new NotFoundException("Journal entry not found");
     return entry;
   }
 
-  private async validateLines(tx: Prisma.TransactionClient, businessId: string, lines: JournalLineInput[]) {
+  private async validateLines(tx: Prisma.TransactionClient, userId: string, lines: JournalLineInput[]) {
     if (!lines || lines.length < 2) throw new BadRequestException("At least two journal lines are required");
 
     let debits = new Prisma.Decimal(0);
@@ -74,19 +74,19 @@ export class JournalEntriesService {
     }
 
     const accounts = await tx.account.findMany({
-      where: { businessId, id: { in: accountIds }, isActive: true },
+      where: { userId, id: { in: accountIds }, isActive: true },
     });
     if (accounts.length !== accountIds.length) {
-      throw new BadRequestException("Every journal line must reference an active account in this business");
+      throw new BadRequestException("Every journal line must reference an active account owned by this user");
     }
     const customerIds = lines.map((line) => line.customerId).filter(Boolean) as string[];
     const supplierIds = lines.map((line) => line.supplierId).filter(Boolean) as string[];
     const [customers, suppliers] = await Promise.all([
-      customerIds.length ? tx.customer.findMany({ where: { businessId, id: { in: customerIds }, isActive: true }, select: { id: true } }) : Promise.resolve([]),
-      supplierIds.length ? tx.supplier.findMany({ where: { businessId, id: { in: supplierIds }, isActive: true }, select: { id: true } }) : Promise.resolve([]),
+      customerIds.length ? tx.customer.findMany({ where: { userId, id: { in: customerIds }, isActive: true }, select: { id: true } }) : Promise.resolve([]),
+      supplierIds.length ? tx.supplier.findMany({ where: { userId, id: { in: supplierIds }, isActive: true }, select: { id: true } }) : Promise.resolve([]),
     ]);
-    if (customers.length !== new Set(customerIds).size) throw new BadRequestException("Every customer reference must belong to this business and be active");
-    if (suppliers.length !== new Set(supplierIds).size) throw new BadRequestException("Every supplier reference must belong to this business and be active");
+    if (customers.length !== new Set(customerIds).size) throw new BadRequestException("Every customer reference must belong to this user and be active");
+    if (suppliers.length !== new Set(supplierIds).size) throw new BadRequestException("Every supplier reference must belong to this user and be active");
 
     const normalized = lines.map((line) => {
       if (!line.accountId || !line.side) throw new BadRequestException("Every line needs an account and side");
@@ -110,49 +110,49 @@ export class JournalEntriesService {
     return normalized;
   }
 
-  async create(businessId: string, input: JournalInput) {
+  async create(userId: string, input: JournalInput) {
     const description = input.description?.trim();
     if (!description) throw new BadRequestException("Description is required");
 
     return this.prisma.$transaction(async (tx) => {
-      const lines = await this.validateLines(tx, businessId, input.lines ?? []);
+      const lines = await this.validateLines(tx, userId, input.lines ?? []);
       return tx.journalEntry.create({
         data: {
-          businessId,
+          userId,
           description,
           entryDate: input.entryDate ? new Date(input.entryDate) : new Date(),
-          lines: { create: lines.map((line) => ({ ...line, businessId })) },
+          lines: { create: lines.map((line) => ({ ...line, userId })) },
         },
         include: { lines: { include: { account: true, customer: true, supplier: true } } },
       });
     });
   }
 
-  async update(businessId: string, id: string, input: JournalInput) {
+  async update(userId: string, id: string, input: JournalInput) {
     const description = input.description?.trim();
     if (!description) throw new BadRequestException("Description is required");
 
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.journalEntry.findFirst({ where: { id, businessId } });
+      const existing = await tx.journalEntry.findFirst({ where: { id, userId } });
       if (!existing) throw new NotFoundException("Journal entry not found");
       this.assertManualEntry(existing);
-      const lines = await this.validateLines(tx, businessId, input.lines ?? []);
-      await tx.journalEntryLine.deleteMany({ where: { journalEntryId: id, businessId } });
+      const lines = await this.validateLines(tx, userId, input.lines ?? []);
+      await tx.journalEntryLine.deleteMany({ where: { journalEntryId: id, userId } });
       return tx.journalEntry.update({
         where: { id },
         data: {
           description,
           entryDate: input.entryDate ? new Date(input.entryDate) : existing.entryDate,
-          lines: { create: lines.map((line) => ({ ...line, businessId })) },
+          lines: { create: lines.map((line) => ({ ...line, userId })) },
         },
         include: { lines: { include: { account: true, customer: true, supplier: true } } },
       });
     });
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(userId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.journalEntry.findFirst({ where: { id, businessId } });
+      const existing = await tx.journalEntry.findFirst({ where: { id, userId } });
       if (!existing) throw new NotFoundException("Journal entry not found");
       const systemMessage = this.systemDeleteMessage(existing.sourceType);
       if (systemMessage) throw new BadRequestException(systemMessage);

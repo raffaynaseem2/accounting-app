@@ -62,28 +62,9 @@ enum PaymentKind {
   SUPPLIER_PAYMENT
 }
 
-model Business {
-  id                 String              @id @default(uuid()) @db.Uuid
-  name               String
-  email              String?
-  createdAt          DateTime            @default(now())
-  users              AppUser[]
-  accounts           Account[]
-  expenses           Expense[]
-  journalEntries     JournalEntry[]
-  journalLines       JournalEntryLine[]
-  items              Item[]
-  inventoryMovements InventoryMovement[]
-  salesInvoices      SalesInvoice[]
-  purchaseBills      PurchaseBill[]
-  payments           Payment[]
-  customers          Customer[]
-  suppliers          Supplier[]
-}
-
 model Account {
   id              String            @id @default(uuid()) @db.Uuid
-  businessId      String            @db.Uuid
+  userId          String
   code            String?
   name            String
   type            AccountType
@@ -93,7 +74,6 @@ model Account {
   isActive        Boolean           @default(true)
   createdAt       DateTime          @default(now())
 
-  business         Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   parentAccount    Account?           @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: Restrict)
   childAccounts    Account[]          @relation("AccountHierarchy")
   journalLines     JournalEntryLine[]
@@ -101,15 +81,15 @@ model Account {
   supplierPayables    Supplier[]      @relation("SupplierPayables")
   receivedPayments    Payment[]       @relation("PaymentAccount")
 
-  @@unique([businessId, code])
-  @@unique([businessId, systemKey])
-  @@index([businessId])
+  @@unique([userId, code])
+  @@unique([userId, systemKey])
+  @@index([userId])
   @@index([parentAccountId])
 }
 
 model Customer {
   id                  String          @id @default(uuid()) @db.Uuid
-  businessId          String          @db.Uuid
+  userId              String
   name                String
   contactEmail        String?
   contactPhone        String?
@@ -119,19 +99,18 @@ model Customer {
   createdAt           DateTime        @default(now())
   receivableAccountId String?         @db.Uuid
 
-  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   receivableAccount Account?          @relation("CustomerReceivables", fields: [receivableAccountId], references: [id], onDelete: Restrict)
   invoices          SalesInvoice[]
   journalLines      JournalEntryLine[]
   payments          Payment[]
 
-  @@index([businessId])
+  @@index([userId])
   @@index([receivableAccountId])
 }
 
 model Supplier {
   id               String          @id @default(uuid()) @db.Uuid
-  businessId       String          @db.Uuid
+  userId           String
   name             String
   contactEmail     String?
   contactPhone     String?
@@ -141,19 +120,18 @@ model Supplier {
   createdAt        DateTime        @default(now())
   payableAccountId String?         @db.Uuid
 
-  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   payableAccount Account?          @relation("SupplierPayables", fields: [payableAccountId], references: [id], onDelete: Restrict)
   bills          PurchaseBill[]
   journalLines   JournalEntryLine[]
   payments       Payment[]
 
-  @@index([businessId])
+  @@index([userId])
   @@index([payableAccountId])
 }
 
 model Payment {
   id             String      @id @default(uuid()) @db.Uuid
-  businessId     String      @db.Uuid
+  userId     String
   kind           PaymentKind
   customerId     String?     @db.Uuid
   supplierId     String?     @db.Uuid
@@ -165,13 +143,12 @@ model Payment {
   journalEntryId String      @unique @db.Uuid
   createdAt      DateTime    @default(now())
 
-  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
   supplier     Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   account      Account      @relation("PaymentAccount", fields: [accountId], references: [id], onDelete: Restrict)
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
 
-  @@index([businessId, paymentDate])
+  @@index([userId, paymentDate])
   @@index([customerId])
   @@index([supplierId])
 }
@@ -179,13 +156,8 @@ model Payment {
 model AppUser {
   id         String   @id @default(uuid()) @db.Uuid
   authUserId String   @unique
-  businessId String   @db.Uuid
   role       UserRole @default(CLERK)
   createdAt  DateTime @default(now())
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId])
   @@map("app_users")
 }
 
@@ -193,17 +165,16 @@ model Expense {
   id         Int      @id @default(autoincrement())
   name       String
   amount     Float
-  businessId String   @db.Uuid
+  userId     String
   createdAt  DateTime @default(now())
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  @@index([businessId])
+  @@index([userId])
 }
 
 model Item {
   id             String   @id @default(uuid()) @db.Uuid
-  businessId     String   @db.Uuid
+  userId          String
   name           String
   type           ItemType
   productCode    String
@@ -214,18 +185,17 @@ model Item {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   movements         InventoryMovement[]
   salesInvoiceLines SalesInvoiceLine[]  @relation("SalesInvoiceLines")
   purchaseBillLines PurchaseBillLine[]  @relation("PurchaseBillLines")
 
-  @@unique([businessId, productCode])
-  @@index([businessId, type])
+  @@unique([userId, productCode])
+  @@index([userId, type])
 }
 
 model InventoryMovement {
   id          String                  @id @default(uuid()) @db.Uuid
-  businessId  String                  @db.Uuid
+  userId      String
   itemId      String                  @db.Uuid
   quantity    Decimal                 @db.Decimal(19, 4)
   reason      InventoryMovementReason
@@ -233,16 +203,15 @@ model InventoryMovement {
   movementDate DateTime @default(now())
   createdAt   DateTime                @default(now())
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@index([businessId, createdAt])
+  @@index([userId, createdAt])
   @@index([itemId, createdAt])
 }
 
 model SalesInvoice {
   id            String   @id @default(uuid()) @db.Uuid
-  businessId    String   @db.Uuid
+  userId        String
   customerId    String   @db.Uuid
   invoiceNumber String
   issueDate     DateTime @default(now())
@@ -250,12 +219,11 @@ model SalesInvoice {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
   lines    SalesInvoiceLine[]
 
-  @@unique([businessId, invoiceNumber])
-  @@index([businessId, issueDate])
+  @@unique([userId, invoiceNumber])
+  @@index([userId, issueDate])
   @@index([customerId])
 }
 
@@ -278,7 +246,7 @@ model SalesInvoiceLine {
 
 model PurchaseBill {
   id         String   @id @default(uuid()) @db.Uuid
-  businessId String   @db.Uuid
+  userId     String
   supplierId String   @db.Uuid
   billNumber String
   billDate   DateTime @default(now())
@@ -286,12 +254,11 @@ model PurchaseBill {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   supplier Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   lines    PurchaseBillLine[]
 
-  @@unique([businessId, billNumber])
-  @@index([businessId, billDate])
+  @@unique([userId, billNumber])
+  @@index([userId, billDate])
   @@index([supplierId])
 }
 
@@ -314,7 +281,7 @@ model PurchaseBillLine {
 
 model JournalEntry {
   id          String   @id @default(uuid()) @db.Uuid
-  businessId  String   @db.Uuid
+  userId      String
   entryDate   DateTime @default(now())
   description String
   createdAt   DateTime @default(now())
@@ -322,32 +289,30 @@ model JournalEntry {
   sourceType  String?
   sourceId    String?
 
-  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   lines    JournalEntryLine[]
   payment  Payment?
 
-  @@index([businessId, entryDate])
-  @@unique([businessId, sourceType, sourceId])
+  @@index([userId, entryDate])
+  @@unique([userId, sourceType, sourceId])
 }
 
 model JournalEntryLine {
   id             String      @id @default(uuid()) @db.Uuid
-  businessId     String      @db.Uuid
-  journalEntryId String      @db.Uuid
-  accountId      String      @db.Uuid
+  userId          String
+  journalEntryId  String      @db.Uuid
+  accountId       String      @db.Uuid
   customerId     String?     @db.Uuid
   supplierId     String?     @db.Uuid
   side           JournalSide
   amount         Decimal     @db.Decimal(19, 4)
   description    String?
 
-  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
   customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
   supplier     Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
-  @@index([businessId])
+  @@index([userId])
   @@index([journalEntryId])
   @@index([accountId])
 }

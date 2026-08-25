@@ -10,11 +10,10 @@ import { InventoryModule } from "./inventory/inventory.module";
 import { DocumentsModule } from "./documents/documents.module";
 import { PartiesModule } from "./parties/parties.module";
 import { PaymentsModule } from "./payments/payments.module";
-import { SettingsModule } from "./settings/settings.module";
 
 
 @Module({
-  imports: [AuthModule, PrismaModule, ExpensesModule, AccountsModule, JournalEntriesModule, InventoryModule, DocumentsModule, PartiesModule, PaymentsModule, SettingsModule],
+  imports: [AuthModule, PrismaModule, ExpensesModule, AccountsModule, JournalEntriesModule, InventoryModule, DocumentsModule, PartiesModule, PaymentsModule],
   controllers: [AppController],
   providers: [AppService],
 })

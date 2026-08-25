@@ -18,7 +18,7 @@ describe("SalesInvoicesService", () => {
     const accounting = { syncInvoice: jest.fn() } as any;
     const service = new SalesInvoicesService(prisma, accounting);
 
-    await service.create("business-a", { customerId: "customer-a", lines: [{ itemId: "good-a", quantity: 2, unitPrice: 10 }] });
+    await service.create("user-a", { customerId: "customer-a", lines: [{ itemId: "good-a", quantity: 2, unitPrice: 10 }] });
     expect(tx.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ reason: "SALE" }) }));
   });
 });

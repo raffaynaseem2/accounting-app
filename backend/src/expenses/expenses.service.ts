@@ -5,19 +5,19 @@ import { PrismaService } from "../prisma/prisma.service";
 export class ExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getAll(businessId: string) {
+  getAll(userId: string) {
     return this.prisma.expense.findMany({
-      where: { businessId },
+      where: { userId },
       orderBy: { createdAt: "desc" },
     });
   }
 
-  add(businessId: string, expense: { name: string; amount: number }) {
+  add(userId: string, expense: { name: string; amount: number }) {
     return this.prisma.expense.create({
       data: {
         name: expense.name,
         amount: expense.amount,
-        businessId,
+        userId,
       },
     });
   }

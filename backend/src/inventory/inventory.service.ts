@@ -28,9 +28,9 @@ type MovementInput = {
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listItems(businessId: string, type?: ItemType) {
+  listItems(userId: string, type?: ItemType) {
     return this.prisma.item.findMany({
-      where: { businessId, ...(type ? { type } : {}) },
+      where: { userId, ...(type ? { type } : {}) },
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
     });
   }
@@ -46,12 +46,12 @@ export class InventoryService {
     }
   }
 
-  private async nextProductCode(tx: Prisma.TransactionClient, businessId: string) {
-    const count = await tx.item.count({ where: { businessId } });
+  private async nextProductCode(tx: Prisma.TransactionClient, userId: string) {
+    const count = await tx.item.count({ where: { userId } });
     return `ITEM-${String(count + 1).padStart(6, "0")}`;
   }
 
-  async createItem(businessId: string, input: ItemInput) {
+  async createItem(userId: string, input: ItemInput) {
     const name = input.name?.trim();
     if (!name) throw new BadRequestException("Item name is required");
     if (input.type !== "GOOD" && input.type !== "SERVICE") {
@@ -61,7 +61,7 @@ export class InventoryService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const productCode = input.productCode?.trim() || await this.nextProductCode(tx, businessId);
+        const productCode = input.productCode?.trim() || await this.nextProductCode(tx, userId);
         const unitCost = this.decimal(input.unitCost, "Unit cost");
         const unitPrice = this.decimal(input.unitPrice, "Unit price");
         const startingQuantity = itemType === "GOOD"
@@ -70,7 +70,7 @@ export class InventoryService {
 
         const item = await tx.item.create({
           data: {
-            businessId,
+            userId,
             name,
             type: itemType,
             productCode,
@@ -84,7 +84,7 @@ export class InventoryService {
         if (startingQuantity && !startingQuantity.eq(0)) {
           await tx.inventoryMovement.create({
             data: {
-              businessId,
+              userId,
               itemId: item.id,
               quantity: startingQuantity,
               reason: "OPENING_BALANCE",
@@ -95,14 +95,14 @@ export class InventoryService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        throw new ConflictException("Product code already exists in this business");
+        throw new ConflictException("Product code already exists for this user");
       }
       throw error;
     }
   }
 
-  async updateItem(businessId: string, id: string, input: ItemInput & { isActive?: boolean }) {
-    const existing = await this.prisma.item.findFirst({ where: { id, businessId } });
+  async updateItem(userId: string, id: string, input: ItemInput & { isActive?: boolean }) {
+    const existing = await this.prisma.item.findFirst({ where: { id, userId } });
     if (!existing) throw new NotFoundException("Item not found");
     if (input.type && input.type !== existing.type) {
       throw new BadRequestException("An item type cannot be changed after creation");
@@ -124,21 +124,21 @@ export class InventoryService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        throw new ConflictException("Product code already exists in this business");
+        throw new ConflictException("Product code already exists for this user");
       }
       throw error;
     }
   }
 
-  async deactivateItem(businessId: string, id: string) {
-    return this.updateItem(businessId, id, { isActive: false });
+  async deactivateItem(userId: string, id: string) {
+    return this.updateItem(userId, id, { isActive: false });
   }
 
-  async removeItem(businessId: string, id: string) {
-    return this.deactivateItem(businessId, id);
+  async removeItem(userId: string, id: string) {
+    return this.deactivateItem(userId, id);
   }
 
-  async recordMovement(businessId: string, itemId: string, input: MovementInput) {
+  async recordMovement(userId: string, itemId: string, input: MovementInput) {
     const quantity = this.decimal(input.quantity, "Movement quantity");
     if (!quantity || quantity.eq(0)) throw new BadRequestException("Movement quantity cannot be zero");
     if (!input.reason || !["OPENING_BALANCE", "PURCHASE", "SALE", "MANUAL_ADJUSTMENT"].includes(input.reason)) {
@@ -149,7 +149,7 @@ export class InventoryService {
     if (Number.isNaN(movementDate.getTime())) throw new BadRequestException("Movement date must be valid");
 
     return this.prisma.$transaction(async (tx) => {
-      const item = await tx.item.findFirst({ where: { id: itemId, businessId } });
+      const item = await tx.item.findFirst({ where: { id: itemId, userId } });
       if (!item) throw new NotFoundException("Item not found");
       if (item.type === "SERVICE") return { item, movement: null };
 
@@ -158,7 +158,7 @@ export class InventoryService {
         : reason === "SALE" ? quantity.abs().neg() : quantity;
       const movement = await tx.inventoryMovement.create({
         data: {
-          businessId,
+          userId,
           itemId,
           quantity: signedQuantity,
           reason,
@@ -174,22 +174,22 @@ export class InventoryService {
     });
   }
 
-  async listMovements(businessId: string, itemId: string) {
-    const item = await this.prisma.item.findFirst({ where: { id: itemId, businessId } });
+  async listMovements(userId: string, itemId: string) {
+    const item = await this.prisma.item.findFirst({ where: { id: itemId, userId } });
     if (!item) throw new NotFoundException("Item not found");
     return this.prisma.inventoryMovement.findMany({
-      where: { businessId, itemId },
+      where: { userId, itemId },
       orderBy: { movementDate: "desc" },
     });
   }
 
-  listAllMovements(businessId: string) {
-    return this.prisma.inventoryMovement.findMany({ where: { businessId }, include: { item: true }, orderBy: { movementDate: "desc" } });
+  listAllMovements(userId: string) {
+    return this.prisma.inventoryMovement.findMany({ where: { userId }, include: { item: true }, orderBy: { movementDate: "desc" } });
   }
 
-  async getActivity(businessId: string, itemId: string) {
+  async getActivity(userId: string, itemId: string) {
     const item = await this.prisma.item.findFirst({
-      where: { id: itemId, businessId },
+      where: { id: itemId, userId },
       include: {
         movements: { orderBy: { movementDate: "desc" } },
         salesInvoiceLines: { include: { invoice: { include: { customer: true } } }, orderBy: { invoice: { issueDate: "desc" } } },

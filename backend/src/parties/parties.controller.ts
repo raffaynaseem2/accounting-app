@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
 import { PartiesService } from "./parties.service";
 
@@ -8,8 +8,7 @@ export class PartiesController {
   constructor(private readonly service: PartiesService) {}
 
   private context(request: any) {
-    if (!request.appUser) throw new ForbiddenException("User is not linked to a business");
-    return request.appUser.businessId;
+    return request.authUserId;
   }
 
   @Get("customers") listCustomers(@Req() request: any) { return this.service.list(this.context(request), "CUSTOMER"); }

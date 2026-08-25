@@ -15,16 +15,16 @@ export const DEFAULT_ACCOUNTS: DefaultAccount[] = [
   { name: "Opening Balance Equity", type: "EQUITY", systemKey: "OPENING_BALANCE_EQUITY", subledgerType: "NONE" },
 ];
 
-/** Idempotently create the core system accounts every business needs. */
-export async function ensureDefaultAccounts(tx: Prisma.TransactionClient, businessId: string) {
+/** Idempotently create the core system accounts every user needs. */
+export async function ensureDefaultAccounts(tx: Prisma.TransactionClient, userId: string) {
   for (const account of DEFAULT_ACCOUNTS) {
     const existing = await tx.account.findFirst({
-      where: { businessId, systemKey: account.systemKey },
+      where: { userId, systemKey: account.systemKey },
     });
     if (existing) continue;
     await tx.account.create({
       data: {
-        businessId,
+        userId,
         name: account.name,
         type: account.type,
         systemKey: account.systemKey,
