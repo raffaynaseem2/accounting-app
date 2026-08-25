@@ -52,7 +52,7 @@ export default function DashboardPage() {
   }, [isLoaded, isSignedIn, getToken]);
 
   if (!isLoaded) return <main className="panel">Loading...</main>;
-  if (!isSignedIn) return <main className="panel"><h1>Accounting workspace</h1><SignInButton mode="modal" /></main>;
+  if (!isSignedIn) return <main className="panel"><h1>Accounting app</h1><SignInButton mode="modal" /></main>;
 
   const cards = [
     ["Cash & bank", metrics.cash],
@@ -68,7 +68,7 @@ export default function DashboardPage() {
       <div className="page-heading">
         <div>
           <h1>Dashboard</h1>
-          <p>Overview of your business activity.</p>
+          <p>Overview of your activity.</p>
         </div>
         <div className="new-action-menu" ref={ref}>
           <button className="primary-button" onClick={() => setOpen(!open)}>+ New ▾</button>

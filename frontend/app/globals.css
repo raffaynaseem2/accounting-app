@@ -63,7 +63,6 @@ button { cursor: pointer; }
 .sidebar-collapsed .app-content { margin-left: 0; width: 100%; }
 .top-header { height: 64px; background: transparent; border-bottom: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; position: sticky; top: 0; z-index: 10; }
 .header-left { display: flex; align-items: center; min-width: 0; }
-.business-label { color: var(--muted); font-size: 13px; font-weight: 500; }
 .page-content { max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; }
 .page-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
 .page-heading h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }

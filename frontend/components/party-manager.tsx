@@ -137,7 +137,7 @@ export default function PartyManager({ kind }: { kind: Kind }) {
       <div className="page-heading">
         <div>
           <h1>{label}s</h1>
-          <p>Find, open, and manage business {kind}.</p>
+          <p>Find, open, and manage your {kind}.</p>
         </div>
         <button className="primary-button" onClick={openNew}>+ New {label}</button>
       </div>
