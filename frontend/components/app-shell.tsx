@@ -45,6 +45,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const response = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) return;
         const data = await response.json();
+        if (data.setupRequired) {
+          setBusinessName("");
+          if (pathname !== "/setup") router.replace("/setup");
+          return;
+        }
         setRole(data.role);
         setBusinessName(data.business?.name ?? "");
       } catch {
@@ -52,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setRole("CLERK");
       }
     })();
-  }, [isLoaded, isSignedIn, getToken]);
+  }, [isLoaded, isSignedIn, getToken, pathname, router]);
 
   useEffect(() => {
     if (!isLoaded || pathname.startsWith("/sign-in")) return;

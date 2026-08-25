@@ -17,8 +17,15 @@ export class AuthController {
   @Get("me")
   @UseGuards(AuthGuard)
   me(@Req() request: any) {
-    if (!request.appUser) throw new UnauthorizedException("User is not linked to a business");
+    if (!request.appUser) {
+      return {
+        setupRequired: true,
+        role: null,
+        business: null,
+      };
+    }
     return {
+      setupRequired: !request.appUser.business?.name?.trim(),
       role: request.appUser.role,
       business: { id: request.appUser.business.id, name: request.appUser.business.name },
     };
