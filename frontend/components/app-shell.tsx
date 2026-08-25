@@ -4,7 +4,7 @@ import { UserButton, useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -24,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [businessChecked, setBusinessChecked] = useState(false);
+  const businessCheckKey = useRef<string | null>(null);
 
   useEffect(() => {
     setSidebarCollapsed(window.localStorage.getItem("ledgerly.sidebarCollapsed") === "true");
@@ -41,6 +42,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!isLoaded) return;
     const isSignInRoute = pathname.startsWith("/sign-in");
     const isSetupRoute = pathname === "/setup" || pathname.startsWith("/setup/");
+    const checkKey = `${isSignedIn ? "signed-in" : "signed-out"}:${pathname}`;
+    if (businessCheckKey.current === checkKey) return;
+    businessCheckKey.current = checkKey;
+
     if (!isSignedIn || isSignInRoute || isSetupRoute) {
       setBusinessChecked(true);
       return;
