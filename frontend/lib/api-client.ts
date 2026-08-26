@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+if (!configuredApiUrl) {
+  console.error("CRITICAL: NEXT_PUBLIC_API_URL is missing!");
+  throw new Error("NEXT_PUBLIC_API_URL is missing. Configure the Railway backend URL before building the frontend.");
+}
+
+const API_URL: string = configuredApiUrl;
 
 function apiUrl(path: string) {
   const baseUrl = API_URL.replace(/\/+$/, "");
