@@ -11,6 +11,7 @@ export class JournalEntriesController {
     return request.authUserId;
   }
 
+  @Get("form-options") options(@Req() request: any) { return this.service.formOptions(this.userId(request)); }
   @Get()
   list(@Req() request: any) { return this.service.list(this.userId(request)); }
 

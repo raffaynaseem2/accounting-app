@@ -50,12 +50,14 @@ export default function JournalEntriesPage() {
 
   const load = async () => {
     try {
-      const [accountsResult, customersResult, suppliersResult, entriesResult] = await Promise.allSettled([request("/accounts"), request("/customers"), request("/suppliers"), request("/journal-entries")]);
-      if (accountsResult.status === "fulfilled") setAccounts(accountsResult.value.filter((x: any) => x.isActive));
-      if (customersResult.status === "fulfilled") setCustomers(customersResult.value.filter((x: any) => x.isActive));
-      if (suppliersResult.status === "fulfilled") setSuppliers(suppliersResult.value.filter((x: any) => x.isActive));
+      const [optionsResult, entriesResult] = await Promise.allSettled([request("/journal-entries/form-options"), request("/journal-entries")]);
+      if (optionsResult.status === "fulfilled") {
+        setAccounts(optionsResult.value.accounts ?? []);
+        setCustomers(optionsResult.value.customers ?? []);
+        setSuppliers(optionsResult.value.suppliers ?? []);
+      }
       if (entriesResult.status === "fulfilled") setEntries(entriesResult.value);
-      const failed = [accountsResult, customersResult, suppliersResult, entriesResult].find((result) => result.status === "rejected");
+      const failed = [optionsResult, entriesResult].find((result) => result.status === "rejected");
       if (failed?.status === "rejected") setMessage(failed.reason instanceof Error ? failed.reason.message : "Some journal data could not be loaded");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load journal");

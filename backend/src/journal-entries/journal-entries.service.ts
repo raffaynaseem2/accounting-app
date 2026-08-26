@@ -54,6 +54,14 @@ export class JournalEntriesService {
     });
   }
 
+  formOptions(userId: string) {
+    return Promise.all([
+      this.prisma.account.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.customer.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.supplier.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+    ]).then(([accounts, customers, suppliers]) => ({ accounts, customers, suppliers }));
+  }
+
   async get(userId: string, id: string) {
     const entry = await this.prisma.journalEntry.findFirst({
       where: { id, userId },
