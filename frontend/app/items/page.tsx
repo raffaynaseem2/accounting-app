@@ -14,7 +14,6 @@ import MoneyAmount, { NumAmount } from "../../components/money-amount";
 import EmptyState from "../../components/empty-state";
 import { usePagination } from "../../lib/use-pagination";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const empty = { type: "GOOD", name: "", unitCost: "", unitPrice: "", productCode: "", description: "" };
 
 export default function ItemsPage() {

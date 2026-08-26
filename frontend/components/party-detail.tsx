@@ -10,8 +10,6 @@ import PaymentFormDrawer from "./payment-form-drawer";
 import MoneyAmount from "./money-amount";
 import { apiRequest } from "../lib/api-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 export default function PartyDetail({ kind, id }: { kind: "customers" | "suppliers"; id: string }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [party, setParty] = useState<any>(null);

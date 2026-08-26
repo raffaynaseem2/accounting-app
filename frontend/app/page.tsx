@@ -7,8 +7,6 @@ import MoneyAmount from "../components/money-amount";
 import { displayAccountBalance } from "../lib/account-balance";
 import { apiRequest } from "../lib/api-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 export default function DashboardPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [metrics, setMetrics] = useState<any>({ cash: 0, receivable: 0, payable: 0, inventory: 0, sales: 0, purchases: 0 });

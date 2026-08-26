@@ -16,7 +16,6 @@ import { apiRequest } from "../lib/api-client";
 
 type Mode = "sales" | "purchases";
 type Line = { itemId: string; quantity: string; price: string };
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const today = () => new Date().toISOString().slice(0, 10);
 const blank = (): Line => ({ itemId: "", quantity: "", price: "" });
 const totalOf = (d: any) => d.lines.reduce((s: number, l: any) => s + Number(l.lineTotal), 0);

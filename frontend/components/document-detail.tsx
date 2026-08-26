@@ -7,8 +7,6 @@ import MoneyAmount, { NumAmount } from "./money-amount";
 import EmptyState from "./empty-state";
 import { apiRequest } from "../lib/api-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 export default function DocumentDetail({ kind, id }: { kind: "invoice" | "bill"; id: string }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [document, setDocument] = useState<any>(null);

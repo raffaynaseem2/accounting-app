@@ -17,8 +17,6 @@ import {
   transactionEditPath,
 } from "../../../lib/transaction-actions";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 export default function AccountLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [accountId, setAccountId] = useState<string | null>(null);

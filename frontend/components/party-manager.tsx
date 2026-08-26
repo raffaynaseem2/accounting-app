@@ -15,7 +15,6 @@ import { usePagination } from "../lib/use-pagination";
 import { apiRequest } from "../lib/api-client";
 
 type Kind = "customers" | "suppliers";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const empty = { name: "", contactEmail: "", contactPhone: "", billingAddress: "" };
 
 export default function PartyManager({ kind }: { kind: Kind }) {

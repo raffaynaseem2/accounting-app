@@ -14,8 +14,6 @@ import EmptyState from "../../components/empty-state";
 import ConfirmDialog from "../../components/confirm-dialog";
 import PaymentFormDrawer from "../../components/payment-form-drawer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 export default function PaymentsPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [view, setView] = useState<"customer" | "supplier">("customer");

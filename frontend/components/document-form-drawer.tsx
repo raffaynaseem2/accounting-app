@@ -10,7 +10,6 @@ import { apiRequest } from "../lib/api-client";
 type Mode = "sales" | "purchases";
 type Line = { itemId: string; quantity: string; price: string };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const blank = (): Line => ({ itemId: "", quantity: "", price: "" });
 
 type Props = {

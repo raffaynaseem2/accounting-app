@@ -15,7 +15,6 @@ import { usePagination } from "../lib/use-pagination";
 import { displayAccountBalance } from "../lib/account-balance";
 import { apiRequest } from "../lib/api-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const empty = { name: "", code: "", type: "ASSET" };
 
 export default function AccountManager() {

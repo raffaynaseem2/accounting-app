@@ -19,7 +19,6 @@ import {
   transactionEditPath,
 } from "../../lib/transaction-actions";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const today = () => new Date().toISOString().slice(0, 10);
 type Line = { accountId: string; customerId: string; supplierId: string; side: "DEBIT" | "CREDIT"; amount: string };
 const blank = (side: Line["side"] = "DEBIT"): Line => ({ accountId: "", customerId: "", supplierId: "", side, amount: "" });
