@@ -17,6 +17,12 @@ if (configuredApiUrl) {
   console.error("NEXT_PUBLIC_API_URL is missing; using the Railway fallback.");
 }
 function apiUrl(path: string) {
+  if (!API_URL?.trim()) {
+    throw new Error(
+      "CRITICAL: API base URL is missing. Set NEXT_PUBLIC_API_URL to the Railway URL."
+    );
+  }
+
   // Railway serves these Nest routes at the domain root. Always normalize the
   // base before joining paths so a hostname can never become Vercel-relative.
   const baseUrl = (API_URL.startsWith("http") ? API_URL : `https://${API_URL}`)
