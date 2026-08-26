@@ -100,7 +100,9 @@ async function readResponse(response: Response, url: string): Promise<any> {
 }
 
 export async function apiRequest(path: string, getToken: GetToken, options: RequestInit = {}) {
-  const token = await getToken({ skipCache: true });
+  // Let Clerk reuse its valid session token. Clerk refreshes it automatically
+  // when necessary; bypassing the cache adds an auth request to every API call.
+  const token = await getToken();
   if (!token) {
     clearInvalidSession();
     throw new ApiError(401, "Please sign in first");
