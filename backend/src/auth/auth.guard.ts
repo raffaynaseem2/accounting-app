@@ -24,25 +24,27 @@ export class AuthGuard implements CanActivate {
 
     const token = header.substring("Bearer ".length);
 
+    let claims: Awaited<ReturnType<typeof verifyToken>>;
     try {
-      const claims = await verifyToken(token, {
+      claims = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY,
       });
-      const authUserId = claims.sub;
-      if (!authUserId) throw new UnauthorizedException("Invalid bearer token");
-      request.authUserId = authUserId;
-      request.appUser = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.appUser.upsert({
-          where: { authUserId },
-          create: { authUserId, role: "ADMIN" },
-          update: {},
-        });
-        await ensureDefaultAccounts(tx, authUserId);
-        return user;
-      });
-      return true;
     } catch {
       throw new UnauthorizedException("Invalid bearer token");
     }
+
+    const authUserId = claims.sub;
+    if (!authUserId) throw new UnauthorizedException("Invalid bearer token");
+    request.authUserId = authUserId;
+    request.appUser = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.appUser.upsert({
+        where: { authUserId },
+        create: { authUserId, role: "ADMIN" },
+        update: {},
+      });
+      await ensureDefaultAccounts(tx, authUserId);
+      return user;
+    });
+    return true;
   }
 }

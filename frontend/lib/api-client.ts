@@ -70,11 +70,17 @@ export async function apiRequest(path: string, getToken: GetToken, options: Requ
   }
 
   const headers = new Headers(options.headers);
-  headers.set("Authorization", `Bearer ${token}`);
+  const authorization = `Bearer ${token}`;
+  headers.set("Authorization", authorization);
+  if (headers.get("Authorization") !== authorization) {
+    throw new ApiError(401, "Unable to attach the Clerk authorization token");
+  }
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   try {
-    const response = await fetch(apiUrl(path), { ...options, headers });
+    const url = apiUrl(path);
+    console.debug(`[API REQUEST] ${options.method ?? "GET"} ${url} with Clerk bearer token`);
+    const response = await fetch(url, { ...options, headers });
     return await readResponse(response);
   } catch (error) {
     if (error instanceof ApiError) throw error;
