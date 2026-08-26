@@ -23,12 +23,14 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
   const isCustomer = kind === "customers";
 
   const load = useCallback(async () => {
-    const [p, b] = await Promise.all([
+    const [partyResult, balanceResult] = await Promise.allSettled([
       apiRequest(`/${kind}/${id}`, getToken),
       apiRequest(`/${kind}/${id}/balance`, getToken),
     ]);
-    setParty(p);
-    setBalance(b);
+    if (partyResult.status === "fulfilled") setParty(partyResult.value);
+    if (balanceResult.status === "fulfilled") setBalance(balanceResult.value);
+    const failed = [partyResult, balanceResult].find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw (failed.reason instanceof Error ? failed.reason : new Error("Unable to load record"));
   }, [getToken, id, kind]);
 
   useEffect(() => {

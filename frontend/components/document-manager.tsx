@@ -51,10 +51,12 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
 
   const load = async () => {
     try {
-      const [p, i, d] = await Promise.all([request(`/${isSales ? "customers" : "suppliers"}`), request("/items"), request(base)]);
-      setParties(p.filter((x: any) => x.isActive));
-      setItems(i.filter((x: any) => x.isActive));
-      setDocuments(d);
+      const [partyResult, itemResult, documentResult] = await Promise.allSettled([request(`/${isSales ? "customers" : "suppliers"}`), request("/items"), request(base)]);
+      if (partyResult.status === "fulfilled") setParties(partyResult.value.filter((x: any) => x.isActive));
+      if (itemResult.status === "fulfilled") setItems(itemResult.value.filter((x: any) => x.isActive));
+      if (documentResult.status === "fulfilled") setDocuments(documentResult.value);
+      const failed = [partyResult, itemResult, documentResult].find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") setMessage(failed.reason instanceof Error ? failed.reason.message : "Some records could not be loaded");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to load documents");
     }

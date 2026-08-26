@@ -34,9 +34,11 @@ export default function StockLedgerPage() {
 
   const load = async () => {
     try {
-      const [m, i] = await Promise.all([request("/items/movements"), request("/items")]);
-      setMovements(m);
-      setItems(i.filter((x: any) => x.type === "GOOD" && x.isActive));
+      const [movementResult, itemResult] = await Promise.allSettled([request("/items/movements"), request("/items")]);
+      if (movementResult.status === "fulfilled") setMovements(movementResult.value);
+      if (itemResult.status === "fulfilled") setItems(itemResult.value.filter((x: any) => x.type === "GOOD" && x.isActive));
+      const failed = [movementResult, itemResult].find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") setMessage(failed.reason instanceof Error ? failed.reason.message : "Some stock data could not be loaded");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to load stock ledger");
     }
