@@ -53,6 +53,15 @@ async function readResponse(response: Response, url: string): Promise<any> {
   }
 
   if (!text) return null;
+  const trimmed = text.trim();
+  const isBalanceEndpoint = /\/balance\/?(?:[?#].*)?$/i.test(url);
+  const isNumericText = /^[-+]?\d+(?:\.\d+)?$/.test(trimmed);
+  if (contentType.includes("text/plain") || isBalanceEndpoint) {
+    if (isNumericText) return Number(trimmed);
+    if (contentType.includes("text/plain") && !isBalanceEndpoint) return trimmed;
+    console.error("[API TEXT RESPONSE INVALID]", { url, status: response.status, contentType, bodyPreview: text.slice(0, 500) });
+    throw new ApiError(response.status, "The server returned an invalid numeric response.");
+  }
   if (!contentType.includes("application/json") && !/^\s*[\[{]/.test(text)) {
     console.error("[API UNEXPECTED SUCCESS RESPONSE]", { url, status: response.status, contentType, bodyPreview: text.slice(0, 500) });
     throw new ApiError(response.status, "The server returned an unexpected response.");
