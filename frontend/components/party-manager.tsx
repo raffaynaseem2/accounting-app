@@ -35,8 +35,8 @@ export default function PartyManager({ kind }: { kind: Kind }) {
 
   const load = async () => {
     try {
-      const data = await request(`/${kind}`);
-      setRows(await Promise.all(data.map(async (p: any) => ({ ...p, balance: await request(`/${kind}/${p.id}/balance`) }))));
+      const data = await request(`/${kind}/with-balances`);
+      setRows(Array.isArray(data) ? data : []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : `Unable to load ${kind}`);
     }

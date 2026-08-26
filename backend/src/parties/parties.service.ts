@@ -31,6 +31,26 @@ export class PartiesService {
     });
   }
 
+  async listWithBalances(userId: string, kind: PartyKind) {
+    const parties = await this.list(userId, kind);
+    if (!parties.length) return [];
+    const ids = parties.map((party: any) => party.id);
+    const lines = await this.prisma.journalEntryLine.groupBy({
+      by: [kind === "CUSTOMER" ? "customerId" : "supplierId", "side"],
+      where: { userId, ...(kind === "CUSTOMER" ? { customerId: { in: ids } } : { supplierId: { in: ids } }) },
+      _sum: { amount: true },
+    } as any);
+    const balances = new Map<string, Prisma.Decimal>();
+    for (const line of lines as any[]) {
+      const partyId = kind === "CUSTOMER" ? line.customerId : line.supplierId;
+      if (!partyId) continue;
+      const current = balances.get(partyId) ?? new Prisma.Decimal(0);
+      const positiveSide = kind === "CUSTOMER" ? "DEBIT" : "CREDIT";
+      balances.set(partyId, line.side === positiveSide ? current.plus(line._sum.amount ?? 0) : current.minus(line._sum.amount ?? 0));
+    }
+    return parties.map((party: any) => ({ ...party, balance: (balances.get(party.id) ?? new Prisma.Decimal(0)).toFixed(2) }));
+  }
+
   async get(userId: string, kind: PartyKind, id: string) {
     const party = await this.delegate(kind).findFirst({
       where: { id, userId },
