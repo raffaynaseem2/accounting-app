@@ -4,7 +4,6 @@ import Link from "next/link";
 import { SignInButton, useAuth } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import MoneyAmount from "../components/money-amount";
-import { displayAccountBalance } from "../lib/account-balance";
 import { apiRequest } from "../lib/api-client";
 
 export default function DashboardPage() {
@@ -25,25 +24,8 @@ export default function DashboardPage() {
     if (!isLoaded || !isSignedIn) return;
     void (async () => {
       try {
-        const results = await Promise.allSettled([
-          apiRequest("/accounts", getToken),
-          apiRequest("/items", getToken),
-          apiRequest("/sales-invoices", getToken),
-          apiRequest("/purchase-bills", getToken),
-        ]);
-        const value = (index: number, fallback: any[]) => results[index].status === "fulfilled" ? results[index].value : fallback;
-        const a = value(0, []), i = value(1, []), s = value(2, []), b = value(3, []);
-        const balances = await Promise.allSettled(a.map(async (x: any) => ({ x, v: Number(await apiRequest(`/accounts/${x.id}/balance`, getToken)) })));
-        const usableBalances = balances.filter((result): result is PromiseFulfilledResult<{ x: any; v: number }> => result.status === "fulfilled").map((result) => result.value);
-        const display = (entry: { x: any; v: number }) => displayAccountBalance(entry.v, entry.x.type);
-        setMetrics({
-          cash: usableBalances.filter((z) => /cash|bank/i.test(z.x.name)).reduce((n, z) => n + display(z), 0),
-          receivable: display(usableBalances.find((z) => z.x.systemKey === "AR") ?? { x: { type: "ASSET" }, v: 0 }),
-          payable: display(usableBalances.find((z) => z.x.systemKey === "AP") ?? { x: { type: "LIABILITY" }, v: 0 }),
-          inventory: i.filter((x: any) => x.type === "GOOD").reduce((n: number, x: any) => n + Number(x.quantityOnHand || 0) * Number(x.unitCost || 0), 0),
-          sales: s.reduce((n: number, x: any) => n + x.lines.reduce((m: number, l: any) => m + Number(l.lineTotal), 0), 0),
-          purchases: b.reduce((n: number, x: any) => n + x.lines.reduce((m: number, l: any) => m + Number(l.lineTotal), 0), 0),
-        });
+        const summary = await apiRequest("/dashboard/summary", getToken);
+        setMetrics(summary);
       } catch {
         /* dashboard remains usable while API starts */
       }
