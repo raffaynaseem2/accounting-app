@@ -8,8 +8,10 @@ if (!configuredApiUrl) {
 const API_URL: string = configuredApiUrl;
 
 function apiUrl(path: string) {
-  const baseUrl = API_URL.replace(/\/+$/, "");
-  const requestPath = path.startsWith("/") ? path : `/${path}`;
+  // Railway serves these Nest routes at the domain root, so normalize common
+  // environment-value mistakes before joining the endpoint path.
+  const baseUrl = API_URL.replace(/\/+$/, "").replace(/\/api$/i, "");
+  const requestPath = `/${path.replace(/^\/+/, "")}`;
   return `${baseUrl}${requestPath}`;
 }
 
