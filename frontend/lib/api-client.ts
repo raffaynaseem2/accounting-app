@@ -5,14 +5,23 @@ if (!configuredApiUrl) {
   throw new Error("NEXT_PUBLIC_API_URL is missing. Configure the Railway backend URL before building the frontend.");
 }
 
+let parsedApiUrl: URL;
+try {
+  parsedApiUrl = new URL(configuredApiUrl);
+  if (parsedApiUrl.protocol !== "http:" && parsedApiUrl.protocol !== "https:") throw new Error("Unsupported protocol");
+} catch {
+  console.error("CRITICAL: NEXT_PUBLIC_API_URL must be an absolute http(s) URL, for example https://your-service.up.railway.app");
+  throw new Error("NEXT_PUBLIC_API_URL must include https:// and the complete Railway backend domain.");
+}
+
 const API_URL: string = configuredApiUrl;
 
 function apiUrl(path: string) {
   // Railway serves these Nest routes at the domain root, so normalize common
   // environment-value mistakes before joining the endpoint path.
   const baseUrl = API_URL.replace(/\/+$/, "").replace(/\/api$/i, "");
-  const requestPath = `/${path.replace(/^\/+/, "")}`;
-  return `${baseUrl}${requestPath}`;
+  const requestPath = path.replace(/^\/+/, "");
+  return new URL(requestPath, `${baseUrl}/`).toString();
 }
 
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>;
