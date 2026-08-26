@@ -20,7 +20,9 @@ if (configuredApiUrl) {
 function apiUrl(path: string) {
   // Railway serves these Nest routes at the domain root, so normalize common
   // environment-value mistakes before joining the endpoint path.
-  const baseUrl = API_URL.replace(/\/+$/, "").replace(/\/api$/i, "");
+  const baseUrl = (API_URL.startsWith("http") ? API_URL : `https://${API_URL}`)
+    .replace(/\/+$/, "")
+    .replace(/\/api$/i, "");
   const requestPath = path.replace(/^\/+/, "");
   return new URL(requestPath, `${baseUrl}/`).toString();
 }
