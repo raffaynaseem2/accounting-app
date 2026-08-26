@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   description: "Accounting expense tracker",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function RootLayout({
   children,
 }: Readonly<{

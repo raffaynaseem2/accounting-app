@@ -80,7 +80,7 @@ export async function apiRequest(path: string, getToken: GetToken, options: Requ
   try {
     const url = apiUrl(path);
     console.debug(`[API REQUEST] ${options.method ?? "GET"} ${url} with Clerk bearer token`);
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, { ...options, cache: "no-store", headers });
     return await readResponse(response);
   } catch (error) {
     if (error instanceof ApiError) throw error;
