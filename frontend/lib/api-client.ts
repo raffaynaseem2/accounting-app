@@ -16,7 +16,7 @@ if (configuredApiUrl) {
 } else {
   console.error("NEXT_PUBLIC_API_URL is missing; using the Railway fallback.");
 }
-
+//random shit
 function apiUrl(path: string) {
   // Railway serves these Nest routes at the domain root, so normalize common
   // environment-value mistakes before joining the endpoint path.
