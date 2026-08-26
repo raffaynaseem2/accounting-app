@@ -33,31 +33,34 @@ function clearInvalidSession() {
   redirectToSignIn();
 }
 
-async function readResponse(response: Response): Promise<any> {
+async function readResponse(response: Response, url: string): Promise<any> {
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   const text = await response.text();
   const isHtml = contentType.includes("text/html") || /^\s*<!doctype\s+html/i.test(text);
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403 || isHtml) clearInvalidSession();
-    if (contentType.includes("application/json")) {
+    if (contentType.includes("application/json") || /^\s*[\[{]/.test(text)) {
       try {
         const payload = JSON.parse(text);
         throw new ApiError(response.status, payload?.message ?? payload?.error ?? "Request failed");
       } catch (error) {
         if (error instanceof ApiError) throw error;
+        console.error("[API ERROR JSON PARSE FAILED]", error, { url, status: response.status, contentType, bodyPreview: text.slice(0, 500) });
       }
     }
     throw new ApiError(response.status, isHtml ? "The session expired. Please sign in again." : "Request failed");
   }
 
   if (!text) return null;
-  if (!contentType.includes("application/json")) {
+  if (!contentType.includes("application/json") && !/^\s*[\[{]/.test(text)) {
+    console.error("[API UNEXPECTED SUCCESS RESPONSE]", { url, status: response.status, contentType, bodyPreview: text.slice(0, 500) });
     throw new ApiError(response.status, "The server returned an unexpected response.");
   }
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (error) {
+    console.error("[API SUCCESS JSON PARSE FAILED]", error, { url, status: response.status, contentType, bodyPreview: text.slice(0, 500) });
     throw new ApiError(response.status, "The server returned invalid JSON.");
   }
 }
@@ -81,8 +84,9 @@ export async function apiRequest(path: string, getToken: GetToken, options: Requ
     const url = apiUrl(path);
     console.debug(`[API REQUEST] ${options.method ?? "GET"} ${url} with Clerk bearer token`);
     const response = await fetch(url, { ...options, cache: "no-store", headers });
-    return await readResponse(response);
+    return await readResponse(response, url);
   } catch (error) {
+    console.error("[API REQUEST FAILED]", error);
     if (error instanceof ApiError) throw error;
     throw new Error("Unable to reach the server.");
   }
