@@ -16,15 +16,20 @@ if (configuredApiUrl) {
 } else {
   console.error("NEXT_PUBLIC_API_URL is missing; using the Railway fallback.");
 }
-//random shit
 function apiUrl(path: string) {
-  // Railway serves these Nest routes at the domain root, so normalize common
-  // environment-value mistakes before joining the endpoint path.
+  // Railway serves these Nest routes at the domain root. Always normalize the
+  // base before joining paths so a hostname can never become Vercel-relative.
   const baseUrl = (API_URL.startsWith("http") ? API_URL : `https://${API_URL}`)
     .replace(/\/+$/, "")
     .replace(/\/api$/i, "");
   const requestPath = path.replace(/^\/+/, "");
-  return new URL(requestPath, `${baseUrl}/`).toString();
+  const url = new URL(requestPath, `${baseUrl}/`);
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`Invalid API URL protocol: ${url.protocol}`);
+  }
+
+  return url.toString();
 }
 
 type GetToken = (options?: { skipCache?: boolean }) => Promise<string | null>;
