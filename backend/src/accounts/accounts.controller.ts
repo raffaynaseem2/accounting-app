@@ -16,6 +16,9 @@ export class AccountsController {
   @Get()
   list(@Req() request: any) { return this.accountsService.list(this.userId(request)); }
 
+  @Get("with-balances")
+  listWithBalances(@Req() request: any) { return this.accountsService.listWithBalances(this.userId(request)); }
+
   @Post()
   create(@Req() request: any, @Body() body: any) {
     return this.accountsService.create(this.userId(request), body);

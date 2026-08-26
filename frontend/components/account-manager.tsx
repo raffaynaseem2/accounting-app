@@ -35,20 +35,13 @@ export default function AccountManager() {
 
   const load = async () => {
     try {
-      const data = await request("/accounts");
+      const data = await request("/accounts/with-balances");
       const accountList = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : null;
       if (!accountList) {
         console.error("[ACCOUNTS RESPONSE SHAPE ERROR]", { data, dataType: typeof data });
         throw new Error("Accounts response was not a list.");
       }
-      const balanceResults = await Promise.allSettled(
-        accountList.map(async (account: any) => ({ ...account, balance: await request(`/accounts/${account.id}/balance`) })),
-      );
-      setAccounts(balanceResults
-        .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
-        .map((result) => result.value));
-      const failedBalance = balanceResults.find((result) => result.status === "rejected");
-      if (failedBalance?.status === "rejected") console.error("[ACCOUNT BALANCE LOAD FAILED]", failedBalance.reason);
+      setAccounts(accountList);
     } catch (e) {
       console.error("[ACCOUNTS LOAD FAILED]", e);
       setMessage(e instanceof Error ? e.message : "Unable to load accounts");

@@ -27,6 +27,17 @@ export class PaymentsService {
     });
   }
 
+  async formOptions(userId: string, kind?: string) {
+    const isCustomer = kind !== "supplier";
+    const [parties, accounts] = await Promise.all([
+      isCustomer
+        ? this.prisma.customer.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } })
+        : this.prisma.supplier.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.account.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+    ]);
+    return { parties, accounts: accounts.filter(isLiquidAssetAccount) };
+  }
+
   async create(userId: string, input: PaymentInput) {
     if (!input.kind || !["CUSTOMER_RECEIPT", "SUPPLIER_PAYMENT"].includes(input.kind)) {
       throw new BadRequestException("Payment type is required");

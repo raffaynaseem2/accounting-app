@@ -8,6 +8,19 @@ type AccountInput = { name?: string; code?: string | null; type?: "ASSET" | "LIA
 export class AccountsService {
   constructor(private readonly prisma: PrismaService) {}
   list(userId: string) { return this.prisma.account.findMany({ where: { userId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }); }
+  async listWithBalances(userId: string) {
+    const [accounts, lines] = await Promise.all([
+      this.prisma.account.findMany({ where: { userId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }),
+      this.prisma.journalEntryLine.groupBy({ by: ["accountId", "side"], where: { userId }, _sum: { amount: true } }),
+    ]);
+    const totals = new Map<string, Prisma.Decimal>();
+    for (const line of lines) {
+      const current = totals.get(line.accountId) ?? new Prisma.Decimal(0);
+      totals.set(line.accountId, line.side === "DEBIT" ? current.plus(line._sum.amount ?? 0) : current.minus(line._sum.amount ?? 0));
+    }
+    const balance = (accountId: string): Prisma.Decimal => (accounts.find((a) => a.id === accountId)?.childAccounts ?? []).reduce((sum, child) => sum.plus(balance(child.id)), totals.get(accountId) ?? new Prisma.Decimal(0));
+    return accounts.map((account) => ({ ...account, balance: balance(account.id).toFixed(2) }));
+  }
   async create(userId: string, input: AccountInput) {
     const name = input.name?.trim();
     if (!name) throw new BadRequestException("Account name is required");

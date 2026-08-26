@@ -7,6 +7,7 @@ import { SalesInvoicesService } from "./sales-invoices.service";
 export class SalesInvoicesController {
   constructor(private readonly service: SalesInvoicesService) {}
   private userId(request: any) { return request.authUserId; }
+  @Get("form-options") options(@Req() request: any) { return this.service.formOptions(this.userId(request)); }
   @Get() list(@Req() request: any) { return this.service.list(this.userId(request)); }
   @Get(":id") get(@Req() request: any, @Param("id") id: string) { return this.service.get(this.userId(request), id); }
   @Post() create(@Req() request: any, @Body() body: any) { return this.service.create(this.userId(request), body); }

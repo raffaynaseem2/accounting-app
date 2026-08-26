@@ -315,4 +315,5 @@ model JournalEntryLine {
   @@index([userId])
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([userId, accountId])
 }

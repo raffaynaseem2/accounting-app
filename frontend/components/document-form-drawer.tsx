@@ -42,13 +42,12 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
     if (!isLoaded || !isSignedIn) return;
     void (async () => {
       try {
-        const [p, i, doc] = await Promise.all([
-          request(`/${isSales ? "customers" : "suppliers"}`),
-          request("/items"),
+        const [options, doc] = await Promise.all([
+          request(`${base}/form-options`),
           request(`${base}/${documentId}`),
         ]);
-        setParties(p.filter((x: any) => x.isActive));
-        setItems(i.filter((x: any) => x.isActive));
+        setParties((isSales ? options.customers : options.suppliers) ?? []);
+        setItems(options.items ?? []);
         setPartyId(isSales ? doc.customerId : doc.supplierId);
         setNumber(isSales ? doc.invoiceNumber : doc.billNumber);
         setDate((isSales ? doc.issueDate : doc.billDate).slice(0, 10));

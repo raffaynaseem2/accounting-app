@@ -35,13 +35,13 @@ export default function PaymentFormDrawer({ kind, partyId: initialPartyId = "", 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     void (async () => {
-      const [partyResult, accountResult] = await Promise.allSettled([
-        apiRequest(`/${isCustomer ? "customers" : "suppliers"}`, getToken),
-        apiRequest("/accounts", getToken),
-      ]);
-      if (partyResult.status === "fulfilled") setParties(partyResult.value.filter((x: any) => x.isActive));
-      if (accountResult.status === "fulfilled") setAccounts(accountResult.value.filter((x: any) => x.isActive && isLiquidAssetAccount(x)));
-      const failed = [partyResult, accountResult].find((result) => result.status === "rejected");
+      const result = await Promise.allSettled([apiRequest(`/payments/form-options?kind=${isCustomer ? "customer" : "supplier"}`, getToken)]);
+      const optionsResult = result[0];
+      if (optionsResult.status === "fulfilled") {
+        setParties(optionsResult.value.parties ?? []);
+        setAccounts(optionsResult.value.accounts ?? []);
+      }
+      const failed = result.find((item) => item.status === "rejected");
       if (failed?.status === "rejected") setError(failed.reason instanceof Error ? failed.reason.message : "Unable to load payment options");
     })();
   }, [isLoaded, isSignedIn, getToken, isCustomer]);

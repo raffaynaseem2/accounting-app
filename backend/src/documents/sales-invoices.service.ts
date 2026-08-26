@@ -124,6 +124,13 @@ export class SalesInvoicesService {
     });
   }
 
+  formOptions(userId: string) {
+    return Promise.all([
+      this.prisma.customer.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.item.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+    ]).then(([customers, items]) => ({ customers, items }));
+  }
+
   async get(userId: string, id: string) {
     const result = await this.prisma.salesInvoice.findFirst({
       where: { id, userId },

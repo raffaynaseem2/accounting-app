@@ -127,6 +127,13 @@ export class PurchaseBillsService {
     });
   }
 
+  formOptions(userId: string) {
+    return Promise.all([
+      this.prisma.supplier.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.item.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+    ]).then(([suppliers, items]) => ({ suppliers, items }));
+  }
+
   async get(userId: string, id: string) {
     const result = await this.prisma.purchaseBill.findFirst({
       where: { id, userId },
