@@ -1,20 +1,21 @@
+const DEFAULT_API_URL = "https://accounting-app-production-73e5.up.railway.app";
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-if (!configuredApiUrl) {
-  console.error("CRITICAL: NEXT_PUBLIC_API_URL is missing!");
-  throw new Error("NEXT_PUBLIC_API_URL is missing. Configure the Railway backend URL before building the frontend.");
+let API_URL = DEFAULT_API_URL;
+if (configuredApiUrl) {
+  try {
+    const parsed = new URL(configuredApiUrl);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      API_URL = configuredApiUrl;
+    } else {
+      console.error("Invalid NEXT_PUBLIC_API_URL; using the Railway fallback.");
+    }
+  } catch {
+    console.error("Invalid NEXT_PUBLIC_API_URL; using the Railway fallback.");
+  }
+} else {
+  console.error("NEXT_PUBLIC_API_URL is missing; using the Railway fallback.");
 }
-
-let parsedApiUrl: URL;
-try {
-  parsedApiUrl = new URL(configuredApiUrl);
-  if (parsedApiUrl.protocol !== "http:" && parsedApiUrl.protocol !== "https:") throw new Error("Unsupported protocol");
-} catch {
-  console.error("CRITICAL: NEXT_PUBLIC_API_URL must be an absolute http(s) URL, for example https://your-service.up.railway.app");
-  throw new Error("NEXT_PUBLIC_API_URL must include https:// and the complete Railway backend domain.");
-}
-
-const API_URL: string = configuredApiUrl;
 
 function apiUrl(path: string) {
   // Railway serves these Nest routes at the domain root, so normalize common
