@@ -13,6 +13,7 @@ import MoneyAmount from "../../components/money-amount";
 import EmptyState from "../../components/empty-state";
 import ConfirmDialog from "../../components/confirm-dialog";
 import PaymentFormDrawer from "../../components/payment-form-drawer";
+import { formatDateOnly } from "../../lib/date-only";
 
 export default function PaymentsPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -122,7 +123,7 @@ export default function PaymentsPage() {
             <tbody>
               {pageItems.map((p) => (
                 <tr key={p.id}>
-                  <td>{new Date(p.paymentDate).toLocaleDateString()}</td>
+                  <td>{formatDateOnly(p.paymentDate)}</td>
                   <td>{p.customer?.name ?? p.supplier?.name}</td>
                   <td>{p.account?.name}</td>
                   <td className="col-num"><MoneyAmount value={p.amount} /></td>

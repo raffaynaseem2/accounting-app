@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import MoneyAmount, { NumAmount } from "./money-amount";
 import EmptyState from "./empty-state";
 import { apiRequest } from "../lib/api-client";
+import { formatDateOnly } from "../lib/date-only";
 
 export default function DocumentDetail({ kind, id }: { kind: "invoice" | "bill"; id: string }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -44,7 +45,7 @@ export default function DocumentDetail({ kind, id }: { kind: "invoice" | "bill";
           <p>
             <Link className="table-link" href={`/${partyKind}/${party.id}`}>{party.name}</Link>
             {" · "}
-            {new Date(isInvoice ? document.issueDate : document.billDate).toLocaleDateString()}
+            {formatDateOnly(isInvoice ? document.issueDate : document.billDate)}
           </p>
         </div>
         <strong className="ledger-balance"><MoneyAmount value={total} /></strong>

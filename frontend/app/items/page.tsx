@@ -29,6 +29,7 @@ export default function ItemsPage() {
   const [status, setStatus] = useState("ALL");
   const [sortKey, setSortKey] = useState<"name" | "code" | "type" | "quantity" | "price">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [saving, setSaving] = useState(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
@@ -68,6 +69,8 @@ export default function ItemsPage() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await request(editing ? `/items/${editing.id}` : "/items", { method: editing ? "PATCH" : "POST", body: JSON.stringify({ ...form, quantityOnHand: 0, unitCost: form.unitCost ? Number(form.unitCost) : null, unitPrice: form.unitPrice ? Number(form.unitPrice) : null }) });
       close();
@@ -75,6 +78,8 @@ export default function ItemsPage() {
       setMessage("Product saved.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to save product");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -147,7 +152,7 @@ export default function ItemsPage() {
             <label className="field">Product code<input placeholder="Generated if blank" value={form.productCode} onChange={(e) => setForm({ ...form, productCode: e.target.value })} /></label>
             <label className="field full-width">Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
             <div className="form-actions">
-              <button className="primary-button">{editing ? "Save changes" : "Create product"}</button>
+              <button className="primary-button" disabled={saving}>{saving ? "Saving" : "Save"}</button>
               <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             </div>
           </form>

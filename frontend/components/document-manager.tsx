@@ -13,6 +13,8 @@ import EmptyState from "./empty-state";
 import ConfirmDialog from "./confirm-dialog";
 import { usePagination } from "../lib/use-pagination";
 import { apiRequest } from "../lib/api-client";
+import { formatDateOnly } from "../lib/date-only";
+import DocumentPreviewDrawer from "./document-preview-drawer";
 
 type Mode = "sales" | "purchases";
 type Line = { itemId: string; quantity: string; price: string };
@@ -44,6 +46,7 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pendingDelete, setPendingDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const editHandled = useRef(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
@@ -220,7 +223,7 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
             ))}
             <div className="total-box"><span>Total</span><strong><MoneyAmount value={total} /></strong></div>
             <div className="form-actions">
-              <button className="primary-button" disabled={submitting}>{submitting ? "Saving..." : "Save"}</button>
+              <button className="primary-button" disabled={submitting}>{submitting ? "Saving" : "Save"}</button>
               <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             </div>
           </form>
@@ -266,14 +269,14 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
             </thead>
             <tbody>
               {pageItems.map((d) => (
-                  <tr key={d.id} onClick={() => { window.location.href = `${base}/${d.id}`; }}>
+                  <tr key={d.id} onClick={() => setSelectedDocument(d)}>
                     <td><strong>{isSales ? d.invoiceNumber : d.billNumber}</strong></td>
                     <td>{isSales ? d.customer.name : d.supplier.name}</td>
-                    <td>{new Date(isSales ? d.issueDate : d.billDate).toLocaleDateString()}</td>
+                    <td>{formatDateOnly(isSales ? d.issueDate : d.billDate)}</td>
                     <td className="col-num"><MoneyAmount value={totalOf(d)} /></td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <OverflowMenu items={[
-                        { label: "View", onClick: () => { window.location.href = `${base}/${d.id}`; } },
+                        { label: "View", onClick: () => setSelectedDocument(d) },
                         { label: "Edit", onClick: () => edit(d) },
                         { label: "Record payment", onClick: () => { window.location.href = `/payments?kind=${isSales ? "customer" : "supplier"}&partyId=${isSales ? d.customerId : d.supplierId}`; } },
                         { label: "Delete", danger: true, onClick: () => setPendingDelete(d) },
@@ -305,6 +308,15 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
           danger
           onCancel={() => !deleting && setPendingDelete(null)}
           onConfirm={() => void confirmDelete()}
+        />
+      ) : null}
+      {selectedDocument ? (
+        <DocumentPreviewDrawer
+          mode={mode}
+          document={selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          onEdit={() => { edit(selectedDocument); setSelectedDocument(null); }}
+          onDelete={() => { setPendingDelete(selectedDocument); setSelectedDocument(null); }}
         />
       ) : null}
     </main>

@@ -11,6 +11,7 @@ import SearchField from "../../components/search-field";
 import { NumAmount } from "../../components/money-amount";
 import EmptyState from "../../components/empty-state";
 import { usePagination } from "../../lib/use-pagination";
+import { formatDateOnly } from "../../lib/date-only";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -28,6 +29,7 @@ export default function StockLedgerPage() {
   const [sortKey, setSortKey] = useState("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
@@ -58,21 +60,25 @@ export default function StockLedgerPage() {
 
   const record = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
-      await request(`/items/${form.itemId}/movements`, { method: "POST", body: JSON.stringify({ quantity: Number(form.quantity), reason: form.reason, referenceId: form.referenceId || undefined }) });
+      await request(`/items/${form.itemId}/movements`, { method: "POST", body: JSON.stringify({ quantity: Number(form.quantity), reason: form.reason, referenceId: form.referenceId || undefined, movementDate: form.date }) });
       close();
       await load();
       setMessage("Stock movement recorded.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to record movement");
+    } finally {
+      setSaving(false);
     }
   };
 
   const visible = useMemo(() => movements.filter((m) => {
-    const day = m.createdAt.slice(0, 10);
+    const day = (m.movementDate ?? m.createdAt).slice(0, 10);
     return `${m.item.name} ${m.item.productCode} ${m.referenceId ?? ""}`.toLowerCase().includes(search.toLowerCase()) && (reason === "ALL" || m.reason === reason) && (!productFilter || m.itemId === productFilter) && (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo);
   }).sort((a, b) => {
-    const result = Date.parse(a.createdAt) - Date.parse(b.createdAt);
+    const result = Date.parse(a.movementDate ?? a.createdAt) - Date.parse(b.movementDate ?? b.createdAt);
     return sortDir === "asc" ? result : -result;
   }), [movements, search, reason, productFilter, dateFrom, dateTo, sortDir]);
 
@@ -121,7 +127,7 @@ export default function StockLedgerPage() {
             <label className="field">Quantity<input required type="number" step="0.01" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></label>
             <label className="field">Reference<input value={form.referenceId} onChange={(e) => setForm({ ...form, referenceId: e.target.value })} /></label>
             <div className="form-actions">
-              <button className="primary-button">Record movement</button>
+              <button className="primary-button" disabled={saving}>{saving ? "Saving" : "Save"}</button>
               <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             </div>
           </form>
@@ -164,7 +170,7 @@ export default function StockLedgerPage() {
             <tbody>
               {pageItems.map((m) => (
                 <tr key={m.id} onClick={() => { window.location.href = `/items/${m.itemId}`; }}>
-                  <td>{new Date(m.createdAt).toLocaleDateString()}</td>
+                  <td>{formatDateOnly(m.movementDate ?? m.createdAt)}</td>
                   <td>{m.item.name}</td>
                   <td>{m.reason.replaceAll("_", " ")}</td>
                   <td className="col-num"><NumAmount value={m.quantity} /></td>

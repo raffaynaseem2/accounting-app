@@ -130,7 +130,7 @@ export default function PaymentFormDrawer({ kind, partyId: initialPartyId = "", 
         </label>
         <div className="form-actions">
           <button type="submit" className="primary-button" disabled={submitting}>
-            {submitting ? "Recording..." : "Record payment"}
+            {submitting ? "Saving" : "Save"}
           </button>
           <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
         </div>

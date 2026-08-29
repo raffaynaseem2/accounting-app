@@ -206,7 +206,7 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
             <div className="form-actions">
               {editable ? (
                 <button type="submit" className="primary-button" disabled={submitting}>
-                  {submitting ? "Saving..." : "Save changes"}
+                  {submitting ? "Saving" : "Save"}
                 </button>
               ) : (
                 <button

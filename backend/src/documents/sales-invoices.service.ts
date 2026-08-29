@@ -80,6 +80,7 @@ export class SalesInvoicesService {
     userId: string,
     invoiceId: string,
     lines: NormalizedLine[],
+    movementDate: Date,
   ) {
     const old = await tx.inventoryMovement.findMany({ where: { userId, referenceId: invoiceId } });
     for (const movement of old) {
@@ -105,6 +106,7 @@ export class SalesInvoicesService {
           quantity: line.quantity.neg(),
           reason: "SALE",
           referenceId: invoiceId,
+          movementDate,
         },
       });
       await tx.item.update({
@@ -171,7 +173,7 @@ export class SalesInvoicesService {
           },
           include: { customer: true, lines: true },
         });
-        await this.replaceMovements(tx, userId, invoice.id, lines);
+        await this.replaceMovements(tx, userId, invoice.id, lines, invoice.issueDate);
         await this.accounting.syncInvoice(tx, userId, invoice.id, customer.id, lines, invoiceNumber);
         return invoice;
       });
@@ -218,7 +220,7 @@ export class SalesInvoicesService {
         },
         include: { customer: true, lines: true },
       });
-      await this.replaceMovements(tx, userId, id, lines);
+      await this.replaceMovements(tx, userId, id, lines, invoice.issueDate);
       await this.accounting.syncInvoice(tx, userId, id, customer.id, lines, invoiceNumber);
       return invoice;
     });
@@ -229,7 +231,7 @@ export class SalesInvoicesService {
       const invoice = await tx.salesInvoice.findFirst({ where: { id, userId } });
       if (!invoice) throw new NotFoundException("Sales invoice not found");
 
-      await this.replaceMovements(tx, userId, id, []);
+      await this.replaceMovements(tx, userId, id, [], invoice.issueDate);
       await deleteSourceJournal(tx, userId, "SALES_INVOICE", id);
       await tx.salesInvoice.delete({ where: { id } });
     });

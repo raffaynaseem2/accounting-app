@@ -30,6 +30,7 @@ export default function PartyManager({ kind }: { kind: Kind }) {
   const [status, setStatus] = useState("ALL");
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [saving, setSaving] = useState(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
@@ -73,12 +74,16 @@ export default function PartyManager({ kind }: { kind: Kind }) {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await request(editing ? `/${kind}/${editing.id}` : `/${kind}`, { method: editing ? "PATCH" : "POST", body: JSON.stringify(form) });
       close();
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : `Unable to save ${label}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -147,7 +152,7 @@ export default function PartyManager({ kind }: { kind: Kind }) {
             <label className="field">Email<input type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} /></label>
             <label className="field">Phone<input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} /></label>
             <label className="field full-width">Billing address<textarea value={form.billingAddress} onChange={(e) => setForm({ ...form, billingAddress: e.target.value })} /></label>
-            <div className="form-actions"><button className="primary-button">Save</button><button type="button" className="secondary-button" onClick={close}>Cancel</button></div>
+            <div className="form-actions"><button className="primary-button" disabled={saving}>{saving ? "Saving" : "Save"}</button><button type="button" className="secondary-button" onClick={close}>Cancel</button></div>
           </form>
         </section>
       ) : null}

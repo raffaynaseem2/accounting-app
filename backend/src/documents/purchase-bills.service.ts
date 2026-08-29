@@ -83,6 +83,7 @@ export class PurchaseBillsService {
     userId: string,
     billId: string,
     lines: NormalizedLine[],
+    movementDate: Date,
   ) {
     const old = await tx.inventoryMovement.findMany({ where: { userId, referenceId: billId } });
     for (const movement of old) {
@@ -108,6 +109,7 @@ export class PurchaseBillsService {
           quantity: line.quantity,
           reason: "PURCHASE",
           referenceId: billId,
+          movementDate,
         },
       });
       await tx.item.update({
@@ -174,7 +176,7 @@ export class PurchaseBillsService {
           },
           include: { supplier: true, lines: true },
         });
-        await this.replaceMovements(tx, userId, bill.id, lines);
+        await this.replaceMovements(tx, userId, bill.id, lines, bill.billDate);
         await this.accounting.syncBill(tx, userId, bill.id, supplier.id, lines, billNumber);
         return bill;
       });
@@ -232,7 +234,7 @@ export class PurchaseBillsService {
         },
         include: { supplier: true, lines: true },
       });
-      await this.replaceMovements(tx, userId, id, lines);
+      await this.replaceMovements(tx, userId, id, lines, bill.billDate);
       await this.accounting.syncBill(tx, userId, id, supplier.id, lines, billNumber);
       return bill;
     });
@@ -243,7 +245,7 @@ export class PurchaseBillsService {
       const bill = await tx.purchaseBill.findFirst({ where: { id, userId } });
       if (!bill) throw new NotFoundException("Purchase bill not found");
 
-      await this.replaceMovements(tx, userId, id, []);
+      await this.replaceMovements(tx, userId, id, [], bill.billDate);
       await deleteSourceJournal(tx, userId, "PURCHASE_BILL", id);
       await tx.purchaseBill.delete({ where: { id } });
     });

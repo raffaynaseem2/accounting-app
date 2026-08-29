@@ -30,6 +30,7 @@ export default function AccountManager() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [saving, setSaving] = useState(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
 
@@ -98,12 +99,16 @@ export default function AccountManager() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await request(editing ? `/accounts/${editing.id}` : "/accounts", { method: editing ? "PATCH" : "POST", body: JSON.stringify(form) });
       close();
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to save account");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -173,7 +178,7 @@ export default function AccountManager() {
               </select>
             </label>
             <div className="form-actions">
-              <button className="primary-button">Save account</button>
+              <button className="primary-button" disabled={saving}>{saving ? "Saving" : "Save"}</button>
               <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             </div>
           </form>

@@ -44,6 +44,7 @@ export default function JournalEntriesPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pendingDelete, setPendingDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const editHandled = useRef(false);
 
   const request = (path: string, options: RequestInit = {}) => apiRequest(path, getToken, options);
@@ -143,6 +144,8 @@ export default function JournalEntriesPage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       await request(editingId ? `/journal-entries/${editingId}` : "/journal-entries", { method: editingId ? "PATCH" : "POST", body: JSON.stringify({ description, entryDate: date, lines: lines.map((l) => ({ ...l, customerId: l.customerId || null, supplierId: l.supplierId || null, amount: Number(l.amount) })) }) });
       close();
@@ -150,6 +153,8 @@ export default function JournalEntriesPage() {
       setMessage("Journal entry saved.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to save journal entry");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -210,7 +215,7 @@ export default function JournalEntriesPage() {
               <button type="button" className="secondary-button" onClick={() => setLines([...lines, blank()])}>+ Add line</button>
             </div>
             <div className="form-actions">
-              <button className="primary-button" disabled={totals.DEBIT <= 0 || totals.DEBIT !== totals.CREDIT}>{totals.DEBIT > 0 && totals.DEBIT === totals.CREDIT ? "Save journal entry" : "Entry must balance"}</button>
+              <button className="primary-button" disabled={saving || totals.DEBIT <= 0 || totals.DEBIT !== totals.CREDIT}>{saving ? "Saving" : "Save"}</button>
               <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             </div>
           </form>
