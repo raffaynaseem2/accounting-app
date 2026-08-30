@@ -211,7 +211,10 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
             <label className="field full-width">Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
             <div className="toolbar-row">
               <h3>Line items</h3>
-              <button type="button" className="secondary-button" onClick={() => setLines([...lines, blank()])}>+ Add line</button>
+              <div className="toolbar-actions">
+                <Link className="section-heading-link" href="/items?new=1">+ New product</Link>
+                <button type="button" className="secondary-button" onClick={() => setLines([...lines, blank()])}>+ Add line</button>
+              </div>
             </div>
             {lines.map((line, i) => (
               <div className="line-item" key={i}>

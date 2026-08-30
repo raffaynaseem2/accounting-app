@@ -46,6 +46,12 @@ export default function ItemsPage() {
   }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
+    if (isLoaded && isSignedIn && new URLSearchParams(window.location.search).get("new") === "1") {
+      openNew();
+    }
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
     if (showForm) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [showForm]);
 

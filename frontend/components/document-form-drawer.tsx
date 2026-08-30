@@ -2,6 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import SearchableSelect from "./searchable-select";
 import MoneyAmount from "./money-amount";
 import SideDrawer from "./side-drawer";
@@ -154,11 +155,10 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
             </label>
             <div className="toolbar-row">
               <h3>Line items</h3>
-              {editable ? (
-                <button type="button" className="secondary-button" onClick={() => setLines([...lines, blank()])}>
-                  + Add line
-                </button>
-              ) : null}
+              {editable ? <div className="toolbar-actions">
+                <Link className="section-heading-link" href="/items?new=1">+ New product</Link>
+                <button type="button" className="secondary-button" onClick={() => setLines([...lines, blank()])}>+ Add line</button>
+              </div> : null}
             </div>
             {lines.map((line, i) => (
               <div className="line-item" key={i}>
