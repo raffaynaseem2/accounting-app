@@ -17,7 +17,13 @@ export class PrismaService
 
     const adapter = new PrismaPg({ connectionString });
 
-    super({ adapter });
+    super({
+      adapter,
+      transactionOptions: {
+        maxWait: 10000,
+        timeout: 15000,
+      },
+    });
   }
 
   async onModuleInit() {

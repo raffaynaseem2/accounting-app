@@ -17,21 +17,24 @@ export const DEFAULT_ACCOUNTS: DefaultAccount[] = [
 
 /** Idempotently create the core system accounts every user needs. */
 export async function ensureDefaultAccounts(tx: Prisma.TransactionClient, userId: string) {
-  for (const account of DEFAULT_ACCOUNTS) {
-    const existing = await tx.account.findFirst({
-      where: { userId, systemKey: account.systemKey },
-    });
-    if (existing) continue;
-    await tx.account.create({
-      data: {
-        userId,
-        name: account.name,
-        type: account.type,
-        systemKey: account.systemKey,
-        subledgerType: account.subledgerType,
-      },
-    });
-  }
+  const existing = await tx.account.findMany({
+    where: { userId, systemKey: { in: DEFAULT_ACCOUNTS.map((account) => account.systemKey) } },
+    select: { systemKey: true },
+  });
+  const existingKeys = new Set(existing.map((account) => account.systemKey));
+  const missing = DEFAULT_ACCOUNTS.filter((account) => !existingKeys.has(account.systemKey));
+  if (!missing.length) return;
+
+  await tx.account.createMany({
+    data: missing.map((account) => ({
+      userId,
+      name: account.name,
+      type: account.type,
+      systemKey: account.systemKey,
+      subledgerType: account.subledgerType,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 /** Asset accounts suitable for bank/cash payment lines — excludes control accounts. */

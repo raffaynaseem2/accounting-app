@@ -15,11 +15,9 @@ describe("ensureDefaultAccounts", () => {
     const created: string[] = [];
     const tx = {
       account: {
-        findFirst: jest.fn(async ({ where }: any) =>
-          where.systemKey === "AR" ? { id: "ar-1" } : null,
-        ),
-        create: jest.fn(async ({ data }: any) => {
-          created.push(data.systemKey);
+        findMany: jest.fn().mockResolvedValue([{ systemKey: "AR" }]),
+        createMany: jest.fn(async ({ data }: any) => {
+          created.push(...data.map((account: any) => account.systemKey));
         }),
       },
     };

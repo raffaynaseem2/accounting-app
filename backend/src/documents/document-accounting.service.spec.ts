@@ -8,8 +8,9 @@ describe("DocumentAccountingService", () => {
   it("returns 400 when bill accounts are missing", async () => {
     const tx = {
       account: {
+        findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn(),
+        createMany: jest.fn(),
       },
     };
 
