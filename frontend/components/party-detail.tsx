@@ -9,6 +9,7 @@ import DocumentFormDrawer from "./document-form-drawer";
 import PaymentFormDrawer from "./payment-form-drawer";
 import MoneyAmount from "./money-amount";
 import { apiRequest } from "../lib/api-client";
+import { formatDateOnly } from "../lib/date-only";
 
 export default function PartyDetail({ kind, id }: { kind: "customers" | "suppliers"; id: string }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -17,6 +18,9 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
   const [message, setMessage] = useState("");
   const [documentModal, setDocumentModal] = useState<{ mode: "sales" | "purchases"; id: string } | null>(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [showPdfOptions, setShowPdfOptions] = useState(false);
+  const [pdfFrom, setPdfFrom] = useState("");
+  const [pdfTo, setPdfTo] = useState("");
   const label = kind === "customers" ? "Customer" : "Supplier";
   const isCustomer = kind === "customers";
 
@@ -59,6 +63,10 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
   if (!party) return <main className="panel">Loading...</main>;
 
   const lines = party.journalLines ?? [];
+  const filteredLines = lines.filter((line: any) => {
+    const day = line.journalEntry.entryDate.slice(0, 10);
+    return (!pdfFrom || day >= pdfFrom) && (!pdfTo || day <= pdfTo);
+  });
   let running = 0;
 
   return (
@@ -88,6 +96,9 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
             >
               {isCustomer ? "New invoice" : "New bill"}
             </Link>
+            <button type="button" className="secondary-button" onClick={() => setShowPdfOptions((value) => !value)}>
+              Export PDF
+            </button>
           </>
         }
       />
@@ -95,9 +106,17 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
       <section className="panel">
         <div className="toolbar-row">
           <h2>Subledger statement</h2>
-          <span className="muted-text">{lines.length} journal lines</span>
+          <span className="muted-text">{filteredLines.length} journal lines</span>
         </div>
-        <div className="table-wrap">
+        {showPdfOptions ? (
+          <div className="ledger-print-controls">
+            <label className="field compact-field">From<input type="date" value={pdfFrom} onChange={(event) => setPdfFrom(event.target.value)} /></label>
+            <label className="field compact-field">To<input type="date" value={pdfTo} onChange={(event) => setPdfTo(event.target.value)} /></label>
+            <button type="button" className="primary-button" onClick={() => window.print()}>Generate PDF</button>
+            <button type="button" className="secondary-button" onClick={() => { setPdfFrom(""); setPdfTo(""); }}>Clear dates</button>
+          </div>
+        ) : null}
+        <div className="table-wrap ledger-print-area">
           <table className="data-table">
             <thead>
               <tr>
@@ -109,7 +128,7 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
               </tr>
             </thead>
             <tbody>
-              {lines.map((line: any) => {
+              {filteredLines.map((line: any) => {
                 const debit = line.side === "DEBIT" ? Number(line.amount) : 0;
                 const credit = line.side === "CREDIT" ? Number(line.amount) : 0;
                 running += isCustomer ? debit - credit : credit - debit;
@@ -120,7 +139,7 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
                     onClick={() => openDocumentFromLine(line)}
                     style={{ cursor: clickable ? "pointer" : "default" }}
                   >
-                    <td>{new Date(line.journalEntry.entryDate).toLocaleDateString()}</td>
+                    <td>{formatDateOnly(line.journalEntry.entryDate)}</td>
                     <td>{line.journalEntry.description}</td>
                     <td className="col-num">{debit ? <MoneyAmount value={debit} /> : "—"}</td>
                     <td className="col-num">{credit ? <MoneyAmount value={credit} /> : "—"}</td>
@@ -131,7 +150,7 @@ export default function PartyDetail({ kind, id }: { kind: "customers" | "supplie
             </tbody>
           </table>
         </div>
-        {!lines.length ? (
+        {!filteredLines.length ? (
           <EmptyState icon="activity" title="No subledger postings" description="Journal entries referencing this party will appear here." />
         ) : null}
       </section>
