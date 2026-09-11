@@ -177,7 +177,7 @@ export class PurchaseBillsService {
           include: { supplier: true, lines: true },
         });
         await this.replaceMovements(tx, userId, bill.id, lines, bill.billDate);
-        await this.accounting.syncBill(tx, userId, bill.id, supplier.id, lines, billNumber);
+        await this.accounting.syncBill(tx, userId, bill.id, supplier.id, lines, billNumber, bill.billDate);
         return bill;
       });
     } catch (error) {
@@ -235,7 +235,7 @@ export class PurchaseBillsService {
         include: { supplier: true, lines: true },
       });
       await this.replaceMovements(tx, userId, id, lines, bill.billDate);
-      await this.accounting.syncBill(tx, userId, id, supplier.id, lines, billNumber);
+      await this.accounting.syncBill(tx, userId, id, supplier.id, lines, billNumber, bill.billDate);
       return bill;
     });
   }

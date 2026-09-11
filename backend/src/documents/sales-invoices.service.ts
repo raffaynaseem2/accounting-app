@@ -174,7 +174,7 @@ export class SalesInvoicesService {
           include: { customer: true, lines: true },
         });
         await this.replaceMovements(tx, userId, invoice.id, lines, invoice.issueDate);
-        await this.accounting.syncInvoice(tx, userId, invoice.id, customer.id, lines, invoiceNumber);
+        await this.accounting.syncInvoice(tx, userId, invoice.id, customer.id, lines, invoiceNumber, invoice.issueDate);
         return invoice;
       });
     } catch (error) {
@@ -221,7 +221,7 @@ export class SalesInvoicesService {
         include: { customer: true, lines: true },
       });
       await this.replaceMovements(tx, userId, id, lines, invoice.issueDate);
-      await this.accounting.syncInvoice(tx, userId, id, customer.id, lines, invoiceNumber);
+      await this.accounting.syncInvoice(tx, userId, id, customer.id, lines, invoiceNumber, invoice.issueDate);
       return invoice;
     });
   }

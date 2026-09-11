@@ -64,6 +64,7 @@ export class DocumentAccountingService {
     sourceId: string,
     description: string,
     lines: { accountId: string; customerId?: string; supplierId?: string; side: "DEBIT" | "CREDIT"; amount: Prisma.Decimal }[],
+    entryDate?: Date,
   ) {
     const existing = await tx.journalEntry.findFirst({ where: { userId, sourceType, sourceId } });
     if (existing) await tx.journalEntry.delete({ where: { id: existing.id } });
@@ -75,6 +76,7 @@ export class DocumentAccountingService {
           sourceType,
           sourceId,
           description,
+          ...(entryDate ? { entryDate } : {}),
           lines: {
             create: lines.map((line) => ({
               userId,
@@ -103,6 +105,7 @@ export class DocumentAccountingService {
     customerId: string,
     lines: BillLine[],
     invoiceNumber: string,
+    invoiceDate?: Date,
   ) {
     const { ar, revenue } = await this.resolveInvoiceAccounts(tx, userId);
     const total = this.lineTotal(lines);
@@ -111,7 +114,7 @@ export class DocumentAccountingService {
     return this.replace(tx, userId, "SALES_INVOICE", invoiceId, `Sales invoice ${invoiceNumber}`, [
       { accountId: ar.id, customerId, side: "DEBIT", amount: total },
       { accountId: revenue.id, side: "CREDIT", amount: total },
-    ]);
+    ], invoiceDate);
   }
 
   async syncBill(
@@ -121,6 +124,7 @@ export class DocumentAccountingService {
     supplierId: string,
     lines: BillLine[],
     billNumber: string,
+    billDate?: Date,
   ) {
     const { ap, generalExpense } = await this.resolveBillAccounts(tx, userId);
     const total = this.lineTotal(lines);
@@ -129,6 +133,6 @@ export class DocumentAccountingService {
     return this.replace(tx, userId, "PURCHASE_BILL", billId, `Purchase bill ${billNumber}`, [
       { accountId: generalExpense.id, side: "DEBIT", amount: total },
       { accountId: ap.id, supplierId, side: "CREDIT", amount: total },
-    ]);
+    ], billDate);
   }
 }
