@@ -69,11 +69,10 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
   }, [isLoaded, isSignedIn, documentId, isSales, base]);
 
   const chooseItem = (index: number, itemId: string) => {
-    const item = items.find((x) => x.id === itemId);
     setLines(
       lines.map((l, i) =>
         i === index
-          ? { ...l, itemId, price: l.price || String(isSales ? item?.unitPrice ?? "" : item?.unitCost ?? "") }
+          ? { ...l, itemId }
           : l,
       ),
     );
@@ -81,11 +80,10 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
 
   const total = useMemo(
     () => lines.reduce((s, l) => {
-      const item = items.find((candidate) => candidate.id === l.itemId);
-      const price = Number(l.price) || Number(isSales ? item?.unitPrice : item?.unitCost) || 0;
+      const price = l.price.trim() === "" ? 0 : Number(l.price);
       return s + (Number(l.quantity) || 1) * price;
     }, 0),
-    [lines, items, isSales],
+    [lines],
   );
 
   const submit = async (e: React.FormEvent) => {
@@ -104,7 +102,7 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
           lines: lines.map((l) => ({
             itemId: l.itemId,
             quantity: l.quantity.trim() ? Number(l.quantity) : 1,
-            [isSales ? "unitPrice" : "unitCost"]: l.price.trim() ? Number(l.price) : undefined,
+            [isSales ? "unitPrice" : "unitCost"]: l.price.trim() ? Number(l.price) : 0,
           })),
         }),
       });
@@ -178,7 +176,7 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
                   Quantity
                   <input
                     type="number"
-                    min="0.01"
+                    min="0"
                     step="0.01"
                     value={line.quantity}
                     disabled={disabled}
@@ -189,7 +187,7 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
                   {isSales ? "Unit price" : "Unit cost"}
                   <input
                     type="number"
-                    min="0.01"
+                    min="0"
                     step="0.01"
                     value={line.price}
                     disabled={disabled}

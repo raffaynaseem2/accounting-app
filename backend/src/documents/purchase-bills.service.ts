@@ -35,10 +35,10 @@ export class PurchaseBillsService {
     private readonly accounting: DocumentAccountingService,
   ) {}
 
-  private decimal(value: number | string | undefined, field: string) {
+  private decimal(value: number | string | undefined, field: string, allowZero = false) {
     try {
       const result = new Prisma.Decimal(value ?? 0);
-      if (!result.isFinite() || result.lte(0)) throw new Error();
+      if (!result.isFinite() || (allowZero ? result.lt(0) : result.lte(0))) throw new Error();
       return result;
     } catch {
       throw new BadRequestException(`${field} must be greater than zero`);
@@ -73,7 +73,7 @@ export class PurchaseBillsService {
       if (!line.itemId) throw new BadRequestException("Every line needs an item");
       const item = items.find((candidate) => candidate.id === line.itemId)!;
       const quantity = this.decimal(line.quantity ?? 1, "Quantity");
-      const unitCost = this.decimal(line.unitCost ?? item.unitCost?.toString(), "Unit cost");
+      const unitCost = this.decimal(line.unitCost ?? 0, "Unit cost", true);
       return { item, quantity, unitCost, lineTotal: quantity.mul(unitCost) };
     });
   }
