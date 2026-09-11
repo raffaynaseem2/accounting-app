@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export default function SearchableSelect({
   label,
   value,
@@ -18,7 +20,13 @@ export default function SearchableSelect({
   disabled?: boolean;
 }) {
   const listId = `options-${label.replace(/\W/g, "-")}`;
-  const display = options.find((o) => o.value === value)?.label ?? value;
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? value;
+  const [query, setQuery] = useState(selectedLabel);
+
+  useEffect(() => {
+    setQuery(selectedLabel);
+  }, [selectedLabel]);
+
   return (
     <label className="field">
       {label}
@@ -26,14 +34,17 @@ export default function SearchableSelect({
         required={required}
         list={disabled ? undefined : listId}
         placeholder={placeholder}
-        value={display}
+        value={query}
         disabled={disabled}
         readOnly={disabled}
         onChange={(event) => {
+          const nextQuery = event.target.value;
+          setQuery(nextQuery);
           const found = options.find(
-            (o) => o.label.toLowerCase() === event.target.value.toLowerCase() || o.value === event.target.value,
+            (o) => o.label.toLowerCase() === nextQuery.toLowerCase() || o.value === nextQuery,
           );
-          onChange(found?.value ?? "");
+          if (found) onChange(found.value);
+          else if (!nextQuery) onChange("");
         }}
       />
       {!disabled ? (

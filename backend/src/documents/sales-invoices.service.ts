@@ -69,7 +69,7 @@ export class SalesInvoicesService {
     return lines.map((line) => {
       if (!line.itemId) throw new BadRequestException("Every line needs an item");
       const item = items.find((candidate) => candidate.id === line.itemId)!;
-      const quantity = this.decimal(line.quantity, "Quantity");
+      const quantity = this.decimal(line.quantity ?? 1, "Quantity");
       const unitPrice = this.decimal(line.unitPrice ?? item.unitPrice?.toString(), "Unit price");
       return { item, quantity, unitPrice, lineTotal: quantity.mul(unitPrice) };
     });

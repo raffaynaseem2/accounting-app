@@ -80,8 +80,12 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
   };
 
   const total = useMemo(
-    () => lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0),
-    [lines],
+    () => lines.reduce((s, l) => {
+      const item = items.find((candidate) => candidate.id === l.itemId);
+      const price = Number(l.price) || Number(isSales ? item?.unitPrice : item?.unitCost) || 0;
+      return s + (Number(l.quantity) || 1) * price;
+    }, 0),
+    [lines, items, isSales],
   );
 
   const submit = async (e: React.FormEvent) => {
@@ -99,8 +103,8 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
           notes,
           lines: lines.map((l) => ({
             itemId: l.itemId,
-            quantity: Number(l.quantity),
-            [isSales ? "unitPrice" : "unitCost"]: Number(l.price),
+            quantity: l.quantity.trim() ? Number(l.quantity) : 1,
+            [isSales ? "unitPrice" : "unitCost"]: l.price.trim() ? Number(l.price) : undefined,
           })),
         }),
       });
@@ -173,7 +177,6 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
                 <label className="field">
                   Quantity
                   <input
-                    required
                     type="number"
                     min="0.01"
                     step="0.01"
@@ -185,7 +188,6 @@ export default function DocumentFormDrawer({ mode, documentId, onClose, onSaved 
                 <label className="field">
                   {isSales ? "Unit price" : "Unit cost"}
                   <input
-                    required
                     type="number"
                     min="0.01"
                     step="0.01"

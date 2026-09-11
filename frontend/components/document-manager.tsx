@@ -121,7 +121,11 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
     setLines(lines.map((l, i) => i === index ? { ...l, itemId, price: l.price || String(isSales ? item?.unitPrice ?? "" : item?.unitCost ?? "") } : l));
   };
 
-  const total = useMemo(() => lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0), [lines]);
+  const total = useMemo(() => lines.reduce((s, l) => {
+    const item = items.find((candidate) => candidate.id === l.itemId);
+    const price = Number(l.price) || Number(isSales ? item?.unitPrice : item?.unitCost) || 0;
+    return s + (Number(l.quantity) || 1) * price;
+  }, 0), [lines, items, isSales]);
 
   const visible = useMemo(() => documents.filter((d) => `${isSales ? d.invoiceNumber : d.billNumber} ${isSales ? d.customer?.name : d.supplier?.name}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => {
     const value = (d: any) => sortKey === "reference" ? (isSales ? d.invoiceNumber : d.billNumber).toLowerCase() : sortKey === "party" ? (isSales ? d.customer.name : d.supplier.name).toLowerCase() : sortKey === "total" ? totalOf(d) : Date.parse(isSales ? d.issueDate : d.billDate);
@@ -155,7 +159,7 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await request(editing ? `${base}/${editing.id}` : base, { method: editing ? "PATCH" : "POST", body: JSON.stringify({ [isSales ? "customerId" : "supplierId"]: partyId, [isSales ? "invoiceNumber" : "billNumber"]: number || undefined, [isSales ? "issueDate" : "billDate"]: date, notes, lines: lines.map((l) => ({ itemId: l.itemId, quantity: Number(l.quantity), [isSales ? "unitPrice" : "unitCost"]: Number(l.price) })) }) });
+      await request(editing ? `${base}/${editing.id}` : base, { method: editing ? "PATCH" : "POST", body: JSON.stringify({ [isSales ? "customerId" : "supplierId"]: partyId, [isSales ? "invoiceNumber" : "billNumber"]: number || undefined, [isSales ? "issueDate" : "billDate"]: date, notes, lines: lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity.trim() ? Number(l.quantity) : 1, [isSales ? "unitPrice" : "unitCost"]: l.price.trim() ? Number(l.price) : undefined })) }) });
       close();
       await load();
       setMessage(`${isSales ? "Invoice" : "Bill"} saved.`);
@@ -219,8 +223,8 @@ export default function DocumentManager({ mode }: { mode: Mode }) {
             {lines.map((line, i) => (
               <div className="line-item" key={i}>
                 <SearchableSelect label="Product/service" required value={line.itemId} onChange={(v) => chooseItem(i, v)} options={itemOptions} />
-                <label className="field">Quantity<input required type="number" min="0.01" step="0.01" value={line.quantity} onChange={(e) => setLines(lines.map((x, n) => n === i ? { ...x, quantity: e.target.value } : x))} /></label>
-                <label className="field">{isSales ? "Unit price" : "Unit cost"}<input required type="number" min="0.01" step="0.01" value={line.price} onChange={(e) => setLines(lines.map((x, n) => n === i ? { ...x, price: e.target.value } : x))} /></label>
+                <label className="field">Quantity<input type="number" min="0.01" step="0.01" value={line.quantity} onChange={(e) => setLines(lines.map((x, n) => n === i ? { ...x, quantity: e.target.value } : x))} /></label>
+                <label className="field">{isSales ? "Unit price" : "Unit cost"}<input type="number" min="0.01" step="0.01" value={line.price} onChange={(e) => setLines(lines.map((x, n) => n === i ? { ...x, price: e.target.value } : x))} /></label>
                 <button className="icon-button" type="button" onClick={() => lines.length > 1 && setLines(lines.filter((_, n) => n !== i))}>×</button>
               </div>
             ))}
