@@ -3,6 +3,7 @@ import { Prisma, PaymentKind } from "@prisma/client";
 import { isLiquidAssetAccount } from "../accounts/default-accounts";
 import { deletePaymentRecord } from "../journal/journal-cleanup";
 import { PrismaService } from "../prisma/prisma.service";
+import { visibleAccountWhere } from "../accounts/account-scope";
 
 type PaymentInput = {
   kind?: PaymentKind;
@@ -33,7 +34,7 @@ export class PaymentsService {
       isCustomer
         ? this.prisma.customer.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } })
         : this.prisma.supplier.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
-      this.prisma.account.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.account.findMany({ where: { ...visibleAccountWhere(userId), isActive: true }, orderBy: { name: "asc" } }),
     ]);
     return { parties, accounts: accounts.filter(isLiquidAssetAccount) };
   }
@@ -58,7 +59,7 @@ export class PaymentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.account.findFirst({
-        where: { id: input.accountId, userId, isActive: true },
+        where: { ...visibleAccountWhere(userId), id: input.accountId, isActive: true },
       });
       if (!account || !isLiquidAssetAccount(account)) {
         throw new BadRequestException("Select an active bank or cash asset account");

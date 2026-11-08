@@ -96,3 +96,13 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Odoo Chart of Accounts sync
+
+Set `ODOO_URL`, `ODOO_DB`, `ODOO_USERNAME`, and `ODOO_API_KEY` in the backend environment. An authenticated administrator can trigger the selective global Chart of Accounts import with:
+
+```text
+POST /sync/chart-of-accounts
+Authorization: Bearer <Clerk session token>
+```
+
+The sync reads only Odoo account `id`, `code`, `name`, `account_type`, and `current_balance`. Supported rows are upserted globally by `odooAccountId`; missing Odoo rows are left unchanged and unsupported account types are reported as skipped.

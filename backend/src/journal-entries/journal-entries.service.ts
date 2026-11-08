@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { visibleAccountWhere } from "../accounts/account-scope";
 import { deleteJournalEntry } from "../journal/journal-cleanup";
 
 type JournalLineInput = {
@@ -56,7 +57,7 @@ export class JournalEntriesService {
 
   formOptions(userId: string) {
     return Promise.all([
-      this.prisma.account.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
+      this.prisma.account.findMany({ where: { ...visibleAccountWhere(userId), isActive: true }, orderBy: { name: "asc" } }),
       this.prisma.customer.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
       this.prisma.supplier.findMany({ where: { userId, isActive: true }, orderBy: { name: "asc" } }),
     ]).then(([accounts, customers, suppliers]) => ({ accounts, customers, suppliers }));
@@ -82,7 +83,7 @@ export class JournalEntriesService {
     }
 
     const accounts = await tx.account.findMany({
-      where: { userId, id: { in: accountIds }, isActive: true },
+      where: { ...visibleAccountWhere(userId), id: { in: accountIds }, isActive: true },
     });
     if (accounts.length !== accountIds.length) {
       throw new BadRequestException("Every journal line must reference an active account owned by this user");

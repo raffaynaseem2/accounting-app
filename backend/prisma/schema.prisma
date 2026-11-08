@@ -64,7 +64,7 @@ enum PaymentKind {
 
 model Account {
   id              String            @id @default(uuid()) @db.Uuid
-  userId          String
+  userId          String?
   code            String?
   name            String
   type            AccountType
@@ -72,6 +72,11 @@ model Account {
   subledgerType   SubledgerType     @default(NONE)
   systemKey       SystemAccountKey?
   isActive        Boolean           @default(true)
+  isGlobal        Boolean           @default(false)
+  odooAccountId   String?           @unique
+  odooAccountType String?
+  odooBalance     Decimal?          @db.Decimal(19, 4)
+  lastSyncedAt    DateTime?
   createdAt       DateTime          @default(now())
 
   parentAccount    Account?           @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: Restrict)
@@ -84,6 +89,7 @@ model Account {
   @@unique([userId, code])
   @@unique([userId, systemKey])
   @@index([userId])
+  @@index([isGlobal])
   @@index([parentAccountId])
 }
 

@@ -1,16 +1,17 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { visibleAccountWhere } from "./account-scope";
 
 type AccountInput = { name?: string; code?: string | null; type?: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE"; subledgerType?: "NONE" | "CUSTOMER" | "SUPPLIER" };
 
 @Injectable()
 export class AccountsService {
   constructor(private readonly prisma: PrismaService) {}
-  list(userId: string) { return this.prisma.account.findMany({ where: { userId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }); }
+  list(userId: string) { return this.prisma.account.findMany({ where: visibleAccountWhere(userId), include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }); }
   async listWithBalances(userId: string) {
     const [accounts, lines] = await Promise.all([
-      this.prisma.account.findMany({ where: { userId }, include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }),
+      this.prisma.account.findMany({ where: visibleAccountWhere(userId), include: { childAccounts: true, parentAccount: true }, orderBy: [{ parentAccountId: "asc" }, { name: "asc" }] }),
       this.prisma.journalEntryLine.groupBy({ by: ["accountId", "side"], where: { userId }, _sum: { amount: true } }),
     ]);
     const totals = new Map<string, Prisma.Decimal>();
@@ -33,7 +34,7 @@ export class AccountsService {
     catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ConflictException("Account code already exists"); throw error; }
   }
   async update(userId: string, id: string, input: AccountInput & { isActive?: boolean }) {
-    const account = await this.prisma.account.findFirst({ where: { id, userId } });
+    const account = await this.prisma.account.findFirst({ where: { id, userId, isGlobal: false } });
     if (!account) throw new NotFoundException("Account not found");
     if (input.name !== undefined && !input.name.trim()) throw new BadRequestException("Account name is required");
     if (input.type && input.type !== account.type) throw new BadRequestException("An account type cannot be changed after creation");
@@ -42,7 +43,7 @@ export class AccountsService {
     return this.prisma.account.update({ where: { id }, data: { ...(input.name !== undefined ? { name: input.name.trim() } : {}), ...(input.code !== undefined ? { code: input.code?.trim() || null } : {}), ...(input.isActive !== undefined ? { isActive: input.isActive } : {}) } });
   }
   async remove(userId: string, id: string) {
-    const account = await this.prisma.account.findFirst({ where: { id, userId } });
+    const account = await this.prisma.account.findFirst({ where: { id, userId, isGlobal: false } });
     if (!account) throw new NotFoundException("Account not found");
     if (account.systemKey) throw new ConflictException("System accounts should be deactivated instead of deleted");
     const lineCount = await this.prisma.journalEntryLine.count({ where: { accountId: id, userId } });
@@ -50,7 +51,7 @@ export class AccountsService {
     return this.prisma.account.delete({ where: { id } });
   }
   async getAccountBalance(accountId: string, userId: string): Promise<string> {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId }, select: { id: true, childAccounts: { select: { id: true } } } });
+    const account = await this.prisma.account.findFirst({ where: { ...visibleAccountWhere(userId), id: accountId }, select: { id: true, childAccounts: { select: { id: true } } } });
     if (!account) throw new NotFoundException("Account not found");
     const totals = await this.prisma.journalEntryLine.groupBy({ by: ["side"], where: { accountId, userId }, _sum: { amount: true } });
     let balance = new Prisma.Decimal(0);
@@ -63,7 +64,7 @@ export class AccountsService {
     userId: string,
     filters?: { customerId?: string; supplierId?: string },
   ) {
-    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    const account = await this.prisma.account.findFirst({ where: { ...visibleAccountWhere(userId), id: accountId } });
     if (!account) throw new NotFoundException("Account not found");
 
     const lineWhere: Prisma.JournalEntryLineWhereInput = { accountId, userId };

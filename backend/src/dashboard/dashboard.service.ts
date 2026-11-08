@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { visibleAccountWhere } from "../accounts/account-scope";
 
 @Injectable()
 export class DashboardService {
@@ -9,7 +10,7 @@ export class DashboardService {
   async summary(userId: string) {
     const [accounts, balances, items, invoices, bills] = await Promise.all([
       this.prisma.account.findMany({
-        where: { userId },
+        where: visibleAccountWhere(userId),
         select: { id: true, name: true, type: true, systemKey: true, parentAccountId: true },
       }),
       this.prisma.journalEntryLine.groupBy({
