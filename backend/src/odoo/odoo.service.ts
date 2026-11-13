@@ -26,7 +26,7 @@ export class OdooService {
     const config = this.config();
     const url = new URL(config.url);
     const options = { host: url.hostname, port: Number(url.port) || (url.protocol === "https:" ? 443 : 80), path };
-    return (url.protocol === "https:" ? xmlrpc.createSecureClient(options) : xmlrpc.createClient(options)) as XmlRpcClient;
+    return (url.protocol === "https:" ? xmlrpc.createSecureClient(options) : xmlrpc.createClient(options)) as unknown as XmlRpcClient;
   }
 
   private call(client: XmlRpcClient, method: string, params: unknown[]) {
