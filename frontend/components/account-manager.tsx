@@ -227,8 +227,10 @@ export default function AccountManager() {
                     {!a.systemKey ? (
                       <OverflowMenu items={[
                         { label: "View ledger", onClick: () => { window.location.href = `/accounts/${a.id}`; } },
-                        { label: "Edit", onClick: () => edit(a) },
-                        ...(a.isActive ? [{ label: "Deactivate", danger: true, onClick: () => setConfirm(a) }] : [{ label: "Activate", onClick: () => activate(a) }]),
+                        ...(!a.isGlobal ? [
+                          { label: "Edit", onClick: () => edit(a) },
+                          ...(a.isActive ? [{ label: "Deactivate", danger: true, onClick: () => setConfirm(a) }] : [{ label: "Activate", onClick: () => activate(a) }]),
+                        ] : []),
                       ]} />
                     ) : null}
                   </td>
